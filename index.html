@@ -1,0 +1,79 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Nasty World: crude little games for grown-ups</title>
+<meta name="description" content="Nasty World is a free arcade of short, gross, silly browser games. Crude cartoon humor for ages 18+. No ads, no tracking.">
+<meta name="rating" content="mature"><meta name="theme-color" content="#1c1030">
+<meta property="og:title" content="Nasty World"><meta property="og:description" content="Crude little browser games for grown-ups. 18+ crude cartoon humor.">
+<meta property="og:image" content="bladder-brawl/assets/og.jpg"><meta property="og:type" content="website">
+<link rel="icon" href="bladder-brawl/assets/icon-180.png"><link rel="apple-touch-icon" href="bladder-brawl/assets/icon-180.png">
+<style>
+@font-face{font-family:"Lilita One";src:url(assets/fonts/lilita.woff2) format("woff2");font-display:swap}
+@font-face{font-family:Fredoka;src:url(assets/fonts/fredoka.woff2) format("woff2");font-weight:300 700;font-display:swap}
+:root{--bg:#1c1030;--card:#2b1a47;--ink:#2a1a2e;--lime:#b8f53a;--pink:#ff4f8a;--yel:#ffe14d;--mut:#bfaedb;--sat:env(safe-area-inset-top);--sab:env(safe-area-inset-bottom)}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:#fff;font-family:Fredoka,system-ui,sans-serif;-webkit-text-size-adjust:100%}
+body{background:radial-gradient(1200px 600px at 80% -10%,#4a2a78 0,transparent 60%),radial-gradient(900px 500px at -10% 30%,#26405a 0,transparent 60%),var(--bg);min-height:100vh}
+a{color:inherit;text-decoration:none}
+header{position:sticky;top:0;z-index:10;padding:calc(var(--sat) + 10px) 18px 10px;display:flex;align-items:center;gap:12px;background:rgba(28,16,48,.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.06)}
+header img{height:46px;width:auto;display:block}
+.age{margin-left:auto;font-size:12px;font-weight:600;color:var(--mut);display:flex;align-items:center;gap:6px;text-align:right;line-height:1.2}
+.age b{background:var(--pink);color:#fff;border-radius:8px;padding:3px 7px;font-family:"Lilita One";font-weight:400;font-size:13px;letter-spacing:.5px}
+main{max-width:1180px;margin:0 auto;padding:18px 18px 40px}
+h2{font-family:"Lilita One";font-weight:400;font-size:26px;margin:30px 0 12px;letter-spacing:.3px}
+h2 small{font-family:Fredoka;font-size:14px;color:var(--mut);font-weight:500;margin-left:8px}
+.today{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--mut);margin:6px 0 2px}
+.big{font-family:"Lilita One";font-size:34px;font-weight:400;margin:0 0 14px}
+/* hero */
+.hero{display:grid;grid-template-columns:1fr;gap:0;border-radius:26px;overflow:hidden;background:var(--card);box-shadow:0 20px 50px rgba(0,0,0,.45);position:relative}
+.hero .media{position:relative;aspect-ratio:716/936;max-height:58vh;overflow:hidden;background:#24143c}
+.hero video,.hero .media img{width:100%;height:100%;object-fit:cover;display:block}
+.hero .info{padding:18px 20px 22px;background:linear-gradient(180deg,rgba(43,26,71,0),#2b1a47 30%)}
+.hero .media:after{content:"";position:absolute;left:0;right:0;bottom:0;height:30%;background:linear-gradient(transparent,#2b1a47)}
+.badge{display:inline-block;background:var(--yel);color:var(--ink);font-family:"Lilita One";font-size:13px;padding:3px 9px;border-radius:8px;margin-bottom:8px}
+.hero h3{font-family:"Lilita One";font-weight:400;font-size:32px;margin:0}
+.hero p{margin:6px 0 0;color:#e8dcff;line-height:1.45;font-size:15px}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 0}.tags span{font-size:12px;font-weight:600;padding:4px 9px;border-radius:999px;background:rgba(255,255,255,.08);color:#e8dcff}
+.row{display:flex;align-items:center;gap:12px;margin-top:16px}
+.get{display:inline-flex;align-items:center;justify-content:center;min-width:110px;height:46px;padding:0 22px;border-radius:999px;background:var(--lime);color:var(--ink);font-family:"Lilita One";font-size:20px;box-shadow:0 5px 0 #4f8a12;transition:transform .08s}
+.get:active{transform:translateY(3px);box-shadow:0 2px 0 #4f8a12}
+.free{font-size:12px;color:var(--mut);line-height:1.3}
+@media(min-width:860px){.hero{grid-template-columns:minmax(320px,420px) 1fr}.hero .media{max-height:none}.hero .media:after{display:none}.hero .info{padding:40px 44px;display:flex;flex-direction:column;justify-content:center;background:none}.hero h3{font-size:52px}.hero p{font-size:18px;max-width:560px}}
+/* cards */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px}
+.card{background:var(--card);border-radius:20px;overflow:hidden;display:block;position:relative;box-shadow:0 8px 24px rgba(0,0,0,.3);transition:transform .15s}
+.card:hover{transform:translateY(-3px)}
+.card .thumb{aspect-ratio:716/936;overflow:hidden;background:#24143c}.card .thumb img,.card .thumb video{width:100%;height:100%;object-fit:cover;display:block}
+.card .t{padding:10px 12px 12px}.card h4{margin:0;font-family:"Lilita One";font-weight:400;font-size:19px}.card .g{font-size:12px;color:var(--mut);margin-top:2px}
+.soon .thumb{display:flex;align-items:center;justify-content:center;background:repeating-linear-gradient(-45deg,#2b1a47 0 14px,#24143c 14px 28px)}
+.soon .q{font-family:"Lilita One";font-size:64px;color:rgba(255,255,255,.14)}
+/* shots */
+.shots{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:8px;-webkit-overflow-scrolling:touch}
+.shots img{height:360px;width:auto;border-radius:18px;scroll-snap-align:start;flex:none;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+footer{max-width:1180px;margin:0 auto;padding:24px 18px calc(var(--sab) + 30px);color:var(--mut);font-size:13px;line-height:1.6;border-top:1px solid rgba(255,255,255,.07)}
+footer b{color:#fff}
+@media(prefers-reduced-motion:reduce){.hero video{display:none}}
+</style></head><body>
+<header><a href="./" aria-label="Nasty World home"><img src="assets/logo.png" alt="Nasty World" width="465" height="200"></a>
+<div class="age"><b>18+</b><span>Crude cartoon humor.<br>Not for kids.</span></div></header>
+<main>
+ <div class="today">Featured</div><div class="big">Gross is the new fun.</div>
+ <section id="hero"></section>
+ <h2>All games <small id="count"></small></h2>
+ <div class="grid" id="grid"></div>
+ <h2 id="shotsH">Screenshots</h2>
+ <div class="shots" id="shots"></div>
+</main>
+<footer><b>Nasty World</b> is a little arcade of free, short, crude browser games. <b>18+ · crude cartoon humor</b>: toilets, bugs, smells. Nothing sexual, nothing mean, just dumb.<br>
+No ads. No accounts. No tracking or analytics. Progress is saved only in your browser. All art is drawn in code, sounds are synthesized, fonts are SIL OFL.</footer>
+<script src="games.js"></script>
+<script>
+(function(){const G=window.NASTY_GAMES||[];const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+ const f=G.find(g=>g.featured)||G[0];
+ if(f){document.getElementById('hero').innerHTML=`<a class="hero" href="${esc(f.url)}"><div class="media"><video src="${esc(f.poster)}" poster="${esc(f.still)}" autoplay muted loop playsinline preload="metadata" aria-hidden="true"></video></div>
+  <div class="info">${f.badge?`<div><span class="badge">${esc(f.badge)}</span></div>`:''}<h3>${esc(f.title)}</h3><p><b>${esc(f.tagline)}</b> ${esc(f.blurb)}</p>
+  <div class="tags">${f.tags.map(t=>`<span>${esc(t)}</span>`).join('')}</div><div class="row"><span class="get">PLAY</span><span class="free">Free · plays in browser<br>Phone or desktop</span></div></div></a>`;
+  document.getElementById('shots').innerHTML=(f.shots||[]).map(s=>`<img src="${esc(s)}" alt="${esc(f.title)} screenshot" loading="lazy">`).join('');}
+ document.getElementById('count').textContent=G.length+(G.length===1?' game':' games')+' · more coming';
+ const cards=G.map(g=>`<a class="card" href="${esc(g.url)}"><div class="thumb"><img src="${esc(g.still)}" alt="" loading="lazy"></div><div class="t"><h4>${esc(g.title)}</h4><div class="g">${esc(g.genre)}</div></div></a>`);
+ for(let i=0;i<Math.max(1,3-G.length);i++)cards.push(`<div class="card soon" aria-label="Coming soon"><div class="thumb"><span class="q">?</span></div><div class="t"><h4>Coming soon</h4><div class="g">Something disgusting</div></div></div>`);
+ document.getElementById('grid').innerHTML=cards.join('');})();
+</script></body></html>
