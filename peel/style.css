@@ -1,0 +1,43 @@
+@font-face{font-family:Luckiest;src:url(fonts/LuckiestGuy-Regular.ttf);font-display:block}
+@font-face{font-family:Fredoka;src:url(fonts/Fredoka.ttf);font-weight:300 700;font-display:swap}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:#2b1d3a;font-family:Fredoka,system-ui,sans-serif;color:#fff;user-select:none;-webkit-user-select:none;overscroll-behavior:none}
+#c{position:fixed;inset:0;width:100%;height:100%;touch-action:none;display:block}
+.hidden{display:none!important}
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:max(14px,env(safe-area-inset-top)) 16px 16px;background:radial-gradient(circle at 50% 30%,#5b3a78 0,#2b1d3a 70%);overflow-y:auto;text-align:center;z-index:5}
+#pause,#result,#intro{background:rgba(25,12,35,.72);backdrop-filter:blur(3px)}
+.card{background:#fff6ea;color:#3a2340;border-radius:22px;padding:18px 18px 14px;max-width:380px;width:100%;box-shadow:0 10px 0 #c99a74,0 18px 40px #0008;border:3px solid #3a2340}
+h2{font-family:Luckiest;letter-spacing:1px;font-size:30px;margin:4px 0 10px;color:#ffcf5a;text-shadow:3px 3px 0 #3a2340}
+.card h2{color:#ff7d5c}
+.logo{font-family:Luckiest;margin:0;line-height:.85;font-weight:400;transform:rotate(-3deg)}
+.logo span{display:inline-block;font-size:min(17vw,84px);color:#ffd36b;-webkit-text-stroke:3px #3a2340;text-shadow:0 6px 0 #3a2340,0 10px 20px #0007}
+.logo .l2{color:#ff8a7a}
+.logo small{display:block;font-size:min(6vw,26px);color:#bff3e6;-webkit-text-stroke:1.5px #3a2340;text-shadow:0 3px 0 #3a2340;margin-top:8px;letter-spacing:1px}
+#mascot{width:min(62vw,250px);height:auto;margin-bottom:-6px}
+.tag{max-width:330px;opacity:.9;margin:12px 0 6px;font-size:15px}
+.age{font-weight:700;color:#ffb3a6;letter-spacing:1px;margin:12px 0 0;font-size:14px}
+.btns{display:flex;flex-direction:column;gap:9px;align-items:center;margin-top:12px;width:100%}
+.btns.row{flex-direction:row;justify-content:center}
+button,a.mid,a.big{font-family:Fredoka;font-weight:700;border:3px solid #3a2340;border-radius:16px;cursor:pointer;color:#3a2340;text-decoration:none;display:inline-block}
+.big{font-size:21px;padding:12px 26px;background:#ffcf5a;box-shadow:0 5px 0 #3a2340;min-width:220px}
+.mid{font-size:16px;padding:9px 18px;background:#bff3e6;box-shadow:0 4px 0 #3a2340;min-width:180px}
+.ghost{background:#fff6ea}
+button:active,a.mid:active{transform:translateY(3px);box-shadow:0 1px 0 #3a2340}
+button:disabled{opacity:.45}
+#hud{position:fixed;inset:0;pointer-events:none;z-index:3}
+#hud button{pointer-events:auto;position:absolute}
+.round{width:44px;height:44px;border-radius:50%;background:#fff6ea;font-size:16px;box-shadow:0 3px 0 #3a2340;padding:0}
+.pill{font-size:15px;padding:7px 12px;background:#bff3e6;box-shadow:0 3px 0 #3a2340}
+#custList,#shopList{display:flex;flex-direction:column;gap:8px;width:100%;max-width:380px}
+.cust,.item{display:flex;align-items:center;gap:10px;background:#fff6ea;color:#3a2340;border-radius:16px;padding:8px 12px;border:3px solid #3a2340;text-align:left;box-shadow:0 4px 0 #c99a74}
+.cust canvas{flex:none}
+.cust .t{flex:1;font-size:14px}.cust b,.item b{font-size:16px}
+.cust button,.item button{min-width:0;padding:7px 12px;font-size:15px;background:#ffcf5a;box-shadow:0 3px 0 #3a2340}
+.cust.locked{opacity:.55}
+.item .t{flex:1;font-size:13px}
+.coins{font-size:18px;margin:4px}
+#resBody{font-size:15px;line-height:1.45}
+#resBody .stars{font-size:30px;letter-spacing:4px;color:#ffb400}
+#shareImg{width:150px;border-radius:12px;border:3px solid #3a2340;margin:8px auto 2px;display:block}
+#introTxt{font-size:15px;line-height:1.4}
+#introTxt canvas{display:block;margin:0 auto}

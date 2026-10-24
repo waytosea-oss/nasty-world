@@ -1,0 +1,11 @@
+<!doctype html><iframe id=f src="index.html" width=390 height=844></iframe><script>
+// difficulty measurement: a bot with human-like speed jitter peels every level; logs results
+const f=document.getElementById('f');f.onload=async()=>{const w=f.contentWindow,P=w.__peel;const out=[];
+for(const [sp,cau,lab] of [[250,.35,'careful'],[400,.5,'normal'],[600,.8,'greedy']]) for(let l=0;l<6;l++){P.resetSave();P.startLevel(l);let t=0,cur=null,idle=1.3;const dt=1/60;let guard=0;
+ await new Promise(res=>{P.manual(true);const tick=()=>{for(let k=0;k<200;k++){const G=P.G;if(G.done||guard++>40000){res();return}
+   if(!cur||cur===true){if(idle>0){idle-=dt;P.step(dt);continue}idle=1.3;const r=P.bot(sp*(0.8+0.4*Math.random()),0.12+0.2*Math.random(),cau);cur=(typeof r==='object')?r:null;}
+   if(cur&&cur.go){if(!cur.go(dt))cur=null;}P.step(dt);}
+  setTimeout(tick,0);};tick();});
+ for(let k=0;k<200;k++)P.step(1/60);const G=P.G;out.push({n:P.count(),player:lab,level:l,won:G.won,clean:+P.clean().toFixed(2),time:+G.t.toFixed(1),ouch:G.ouch});}
+document.title='DONE';window.RESULT=out;};
+</script>

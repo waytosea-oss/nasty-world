@@ -14,5 +14,20 @@ window.NASTY_GAMES=[
   accent:'#b8f53a',
   badge:'NEW',
   featured:true
+ },
+ {
+  id:'peel',
+  title:'Heelarious: The Great Flake-Off',
+  tagline:'Peel the crust. Snip it clean. Don\'t go too deep.',
+  blurb:'A guy is lost in a book, a laptop or his phone on the toilet while he idly picks his own foot skin. You do the picking: grab a flake, peel long crunchy strips, snip them clean, dodge OUCHes and freeze when someone walks in. Six scenes, including an elephant foot and a regrowing Monster Foot boss.',
+  genre:'Satisfying / ASMR',
+  tags:['Gross-satisfying','One finger','6 scenes','Boss foot'],
+  url:'peel/',
+  poster:'posters/peel.mp4',
+  still:'posters/peel.webp',
+  shots:['posters/peel-s0.webp','posters/peel-s1.webp','posters/peel-s2.webp'],
+  accent:'#ffb3a6',
+  badge:'NEW',
+  featured:false
  }
 ];
