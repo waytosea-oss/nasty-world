@@ -4,7 +4,7 @@ window.NASTY_GAMES=[
   id:'bladder-brawl',
   title:'Bladder Brawl',
   tagline:'Hose the bugs back down the bowl.',
-  blurb:'Gross bugs are climbing out of the toilet. You are Gus, a very large green fella with a very full bladder. Aim the stream, flush in emergencies, upgrade to Fire-Hose Mode and take down three ridiculous bosses across 18 levels.',
+  blurb:'Gross bugs are climbing out of the toilet. You are a scruffy grown-up with a very full bladder in the grimiest restrooms in town. Aim the stream, flush in emergencies, upgrade to Fire-Hose Mode and take down three ridiculous bosses across 18 levels.',
   genre:'Arcade defense',
   tags:['Toilet humor','One finger','18 levels','3 bosses'],
   url:'bladder-brawl/',

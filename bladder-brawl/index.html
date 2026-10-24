@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1d1530">
 <title>Bladder Brawl · Nasty World</title>
-<meta name="description" content="Bladder Brawl: a green giant, one toilet, and an army of bugs trying to climb out. Hold and drag to aim. Mature crude humor (18+). Free browser game on Nasty World.">
+<meta name="description" content="Bladder Brawl: one scruffy dude, one filthy toilet, and an army of bugs trying to climb out. Hold and drag to aim. Mature crude humor (18+). Free browser game on Nasty World.">
 <meta name="rating" content="mature">
 <meta property="og:title" content="Bladder Brawl · Nasty World">
 <meta property="og:description" content="Hose the bugs back down the bowl. 18 levels, 3 bosses, zero dignity. Crude humor, 18+.">
@@ -40,7 +40,7 @@ canvas#cv{position:absolute;left:0;top:0;display:block}
 .ibtn svg{width:24px;height:24px}.ibtn.off{opacity:.45}.ibtn.off::after{content:"";position:absolute;width:30px;height:3px;background:#ff5a8e;transform:rotate(-45deg);border-radius:2px}
 .hubPill{position:absolute;z-index:6;left:12px;top:calc(var(--sat) + 10px);height:34px;padding:0 14px 0 10px;border:0;border-radius:17px;display:flex;align-items:center;gap:4px;font-family:"Lilita One",sans-serif;font-size:15px;color:#fff;cursor:pointer;background:rgba(0,0,0,.35);box-shadow:inset 0 0 0 2px rgba(199,255,58,.5)}
 .hubPill b{font-size:22px;line-height:1;margin-top:-3px;color:var(--goo)}
-#title{justify-content:flex-start;padding-top:calc(var(--sat) + 52px);background:radial-gradient(ellipse at 50% 30%,#3d2a5e,#1d1530 70%)}
+#title{justify-content:flex-start;padding-top:calc(var(--sat) + 52px);background:linear-gradient(rgba(14,6,22,.55),rgba(14,6,22,.8)),url(art/bg-club.webp) center/cover,#1d1530}
 #title::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(45deg,rgba(255,255,255,.025) 0 18px,transparent 18px 36px);pointer-events:none}
 .logo img{width:min(92vw,420px);display:block;margin:0 auto;filter:drop-shadow(0 8px 12px rgba(0,0,0,.45));animation:logoIn .8s cubic-bezier(.3,1.5,.5,1) both,logoBob 3.4s ease-in-out .8s infinite}
 @keyframes logoIn{0%{transform:scale(.3) rotate(-6deg);opacity:0}100%{transform:scale(1);opacity:1}}
@@ -112,7 +112,7 @@ canvas#cv{position:absolute;left:0;top:0;display:block}
 #banner.boss .b1{color:#ff8fc6;animation:shake .15s linear infinite}
 @keyframes ban{0%{opacity:0;transform:scale(1.6)}12%{opacity:1;transform:scale(1)}80%{opacity:1}100%{opacity:0;transform:translateY(-30px)}}
 @keyframes shake{0%,100%{transform:translateX(0)}50%{transform:translateX(3px)}}
-.panel{width:min(88vw,350px);border-radius:28px;padding:30px 20px 20px;text-align:center;background:linear-gradient(#3a2a58,#241a38);box-shadow:inset 0 0 0 3px rgba(199,255,58,.35),0 20px 50px rgba(0,0,0,.55);position:relative}
+.panel{width:min(88vw,350px);border-radius:28px;padding:30px 20px 20px;text-align:center;background:linear-gradient(rgba(36,20,52,.72),rgba(24,14,36,.82)),url(art/ui-panel.webp) center/100% 100%,#2a1d40;box-shadow:inset 0 0 0 3px rgba(199,255,58,.35),0 20px 50px rgba(0,0,0,.55);position:relative}
 .panel h2{margin:0 0 6px;font-family:"Lilita One";font-weight:400;font-size:36px;color:var(--goo);text-shadow:0 3px 0 rgba(0,0,0,.4)}
 .panel .sub{opacity:.85;font-size:15px;margin-bottom:12px;line-height:1.45}
 .panel .col{display:flex;flex-direction:column;gap:12px;align-items:stretch;margin-top:8px}
@@ -214,7 +214,7 @@ canvas#cv{position:absolute;left:0;top:0;display:block}
  <div class="panel"><div class="ribbon">Bowl secured!</div>
   <img src="assets/logo.png" alt="Bladder Brawl" style="width:min(64vw,250px);display:block;margin:10px auto 4px">
   <h2 style="font-size:26px">Mama Legs got flushed.</h2>
-  <div class="sub">Gus can finally pee in peace. Stars collected: <b id="endStars">0</b><br>Go back and get three stars everywhere, champ.</div>
+  <div class="sub">You can finally pee in peace. Stars collected: <b id="endStars">0</b><br>Go back and get three stars everywhere, champ.</div>
   <div class="col"><button class="btn" id="bEndOk">Level select</button><button class="btn hub sm" id="bHubE">Back to Nasty World</button></div>
  </div>
 </div>
@@ -222,6 +222,7 @@ canvas#cv{position:absolute;left:0;top:0;display:block}
 <div id="loading"><img src="assets/logo.png" alt="Bladder Brawl" style="width:min(80vw,320px)"></div>
 </div>
 <script src="art.js"></script>
+<script src="sprites.js"></script>
 <script src="game.js"></script>
 <script src="mascot.js"></script>
 </body>

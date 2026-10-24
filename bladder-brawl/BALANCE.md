@@ -15,3 +15,12 @@ skilled(.85): 100 100 100 100 100 83 100 100 100 100 100 100 100 100 100 100 100
 - L1 to L5 are onboarding (one new bug type per level).
 - Boss levels (6, 12, 18) are deliberate spikes; L15 is the pre-final exam.
 - Base ramp: count 8+1.8·L, HP ×(1+0.17·(L-1)), speed ×(1+0.045·(L-1)), spawn gap shrinks 0.13 s per level, plus a per-level multiplier table `DMT` in `game.js`.
+
+## Art overhaul (Oct 2026)
+Bowl wall curve changed to match the generated bowl sprite: `wallL = 24 + 190·max(0,t−.35)²` (was `34 + 52·t²`).
+Re-run of the bot sim (6 runs/level, % wins) stays within sampling noise of the previous table:
+```
+0.35 100 83 100 100 83 16 100 100 66 66 50 0 83 83 33 83 83 0
+0.6  100 100 100 100 100 83 100 100 100 100 100 100 83 100 100 100 100 16
+0.85 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100
+```
