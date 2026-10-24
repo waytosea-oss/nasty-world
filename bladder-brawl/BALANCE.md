@@ -36,3 +36,13 @@ presentation/bonus only and are disabled in `?sim`. Bot sim re-run (6 runs/level
 0.6  100 100 100 100 100 100 100 100 100 100 100 100 100 100 83 100 100 0
 0.85 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100
 ```
+
+## v4 stream from above (Oct 2026)
+The stream now falls from the player above the camera (origin off the top edge, sways with aim) on an accelerating arc
+to the aimed point. Reach and flight time still use a virtual launch point at the bowl bottom, so aim lag matches v2.
+Final boss MAMA LEGS: hp 1900 -> 1550, baby-spawn interval 2.8 s -> 3.3 s, babies clamped inside the urinal walls.
+```
+0.35 100 100 100 100 83 0 100 100 66 83 0 0 50 100 33 83 33 0
+0.6  100 100 100 100 100 83 100 100 83 100 100 100 100 100 100 100 100 33
+0.85 100 100 100 100 100 83 100 100 100 100 100 100 100 100 100 100 100 66
+```
