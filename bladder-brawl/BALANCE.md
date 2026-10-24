@@ -24,3 +24,15 @@ Re-run of the bot sim (6 runs/level, % wins) stays within sampling noise of the 
 0.6  100 100 100 100 100 83 100 100 100 100 100 100 83 100 100 100 100 16
 0.85 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100
 ```
+
+## v3 first-person urinal (Oct 2026)
+Play area is now the interior of a wall urinal seen from above/behind. Geometry is derived from the urinal sprite:
+rim (escape line) at 8% of urinal height, bugs spawn at 83% (around the drain), `wallL = Ux + Uw·(.125 + .21·u³)`, u = max(0,(t−.55)/.45).
+The stream enters from the bottom edge (between the player's sneakers); drop flight time ignores the off-screen segment
+below the urinal so lag matches v2. Side events (phone, door, fly target, beer can, splashed kicks, golden roach) are
+presentation/bonus only and are disabled in `?sim`. Bot sim re-run (6 runs/level, % wins):
+```
+0.35 100 100 100 100 83 16 100 100 100 83 33 16 83 100 33 83 33 0
+0.6  100 100 100 100 100 100 100 100 100 100 100 100 100 100 83 100 100 0
+0.85 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100
+```
