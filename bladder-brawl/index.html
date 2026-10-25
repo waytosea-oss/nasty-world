@@ -127,6 +127,9 @@ canvas#cv{position:absolute;left:0;top:0;display:block}
 .dsel{display:flex;gap:6px;justify-content:center;margin:0 auto 12px;max-width:360px}.dsel button{flex:1;min-height:58px;font-family:inherit;border-radius:16px;border:3px solid #2a1a2e;background:#d9d2c3;color:#2a1a2e;cursor:pointer;padding:6px 4px;box-shadow:0 4px 0 #2a1a2e;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05}.dsel button b{font-size:14px;font-weight:900;letter-spacing:.3px}.dsel button i{font-style:normal;font-size:11px;opacity:.75;margin-top:3px;font-weight:700}.dsel button.on{background:#ffd23f;transform:translateY(2px);box-shadow:0 2px 0 #2a1a2e,0 0 0 2px #fff inset}.dsel button[data-diff=hard].on{background:#ff6b4a;color:#fff}#pause .dsel{margin-top:14px}#pause .dsel button{min-height:46px}#pause .dsel button b{font-size:12px}
 .aimsel{display:flex;gap:6px;justify-content:center;align-items:center;margin-top:14px;font-weight:800;color:#fff}.aimsel span{margin-right:4px;font-size:14px}.aimsel button{font:inherit;font-size:14px;padding:7px 12px;border-radius:12px;border:2px solid #2a1a2e;background:#d9d2c3;color:#2a1a2e;cursor:pointer}.aimsel button.on{background:#ffd23f;box-shadow:0 0 0 2px #fff inset}.aimhelp{font-size:11px;opacity:.75;margin-top:6px;color:#fff;max-width:280px;margin-left:auto;margin-right:auto}
 .tipArt{width:100%;height:150px}
+#hStreak{text-align:center;font-family:"Lilita One";font-size:15px;color:#ffe066;text-shadow:0 2px 0 rgba(0,0,0,.6);height:18px;margin-top:2px}#hStreak.on{color:#ffae1f;font-size:19px}#hStreak.hot{color:#ff6a3a;font-size:22px;animation:shake .2s linear infinite}
+#hPow{text-align:center;font-family:"Lilita One";font-size:13px;color:#9fffd0;text-shadow:0 2px 0 rgba(0,0,0,.6);height:15px}
+#icard{justify-content:center;background:rgba(10,6,20,.55);z-index:12}#icard .panel{padding-top:34px}#cArt{width:240px;height:150px;display:block;margin:0 auto}#icard h2{font-size:30px}
 #toast{position:absolute;left:50%;top:20%;transform:translateX(-50%);background:rgba(0,0,0,.8);padding:10px 16px;border-radius:14px;font-weight:600;z-index:30;display:none;white-space:nowrap;font-size:14px}
 #loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:50;background:#1d1530;transition:opacity .3s}#loading.off{opacity:0;pointer-events:none}
 </style>
@@ -139,6 +142,7 @@ canvas#cv{position:absolute;left:0;top:0;display:block}
   <div class="hmid"><div class="hlvl" id="hLvl">Level 1</div><div class="prog"><i id="hProg"></i></div></div>
   <div class="coinbox"><span class="coin"></span><span id="hCoins">0</span></div></div>
  <div id="hHearts"></div>
+ <div id="hStreak"></div><div id="hPow"></div>
  <div id="bossbar"><b id="bossName">BOSS</b><div><i id="bossHp"></i></div></div>
  <div id="tank"><div id="tankF"></div><span>TANK</span></div>
  <button id="bFlush" aria-label="Flush"><svg viewBox="0 0 24 24"><path d="M12 4a8 8 0 1 1-7.5 5.2" stroke="#2a1a2e" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M3 4l2 5 5-2" stroke="#2a1a2e" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>FLUSH<span id="fCnt">2</span></button>
@@ -188,6 +192,7 @@ canvas#cv{position:absolute;left:0;top:0;display:block}
  </div>
 </div>
 
+<div class="scr" id="icard"><div class="panel"><div class="ribbon" id="cRib">NEW BUG!</div><canvas id="cArt" width="480" height="300"></canvas><h2 id="cName"></h2><div class="sub" id="cDesc"></div><div class="col"><button class="btn" id="bCardOk">GOT IT</button></div></div></div>
 <div class="scr dim" id="pause">
  <div class="panel"><h2>Paused</h2><div class="sub" id="pSub">Level 1</div>
   <div class="col"><button class="btn" id="bResume">Resume</button><button class="btn orange" id="bRestart">Restart</button><button class="btn gray" id="bQuit">Level select</button><button class="btn hub" id="bHubP">Back to Nasty World</button></div>
