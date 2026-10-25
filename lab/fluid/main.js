@@ -84,16 +84,18 @@ function layout() {
   W = window.innerWidth; H = window.innerHeight;
   DPR = Math.min(window.devicePixelRatio || 1, LEVELS[qi].dpr);
   renderer.setPixelRatio(DPR); renderer.setSize(W, H, false);
-  // framing: zoom the plate so the urinal (plate px x 180..672, flushometer top y 216, lip y 1196) fills ~95% of the width,
+  // framing: zoom the plate so the urinal (see v4d note below),
   // with a thin wall band on top and the lip just above the button bar. ?frame=old = v1/v2 cover-fit framing.
   let s, ox, oy;
   if (Q.get('frame') === 'old') { s = Math.max(W / CAL.plate[0], H / CAL.plate[1]); ox = (W - CAL.plate[0] * s) / 2; oy = (H - CAL.plate[1] * s) * 0.5; }
   else {
-    const UX0 = 180, UX1 = 672, UY0 = 216, UY1 = 1196, band = 30, bottomUI = 78;
-    s = Math.min(0.95 * W / (UX1 - UX0), (H - band - bottomUI) / (UY1 - UY0));
+    // v4d: outer porcelain cropped ~5% each side (visible x 205..647 keeps the inner bowl edges + a rim sliver),
+    // top starts at the flushometer valve body (y 300), lip pushed down to just above the button bar.
+    const UX0 = 205, UX1 = 647, UY0 = 300, UY1 = 1196, band = 4, bottomUI = 66;
+    s = Math.min(W / (UX1 - UX0), (H - band - bottomUI) / (UY1 - UY0));
     s = Math.max(s, W / CAL.plate[0], H / CAL.plate[1]);
     ox = W / 2 - (UX0 + UX1) / 2 * s;
-    const freeY = H - bottomUI - (UY1 - UY0) * s; oy = Math.min(band, Math.max(8, freeY * 0.35)) - UY0 * s;
+    const freeY = H - bottomUI - (UY1 - UY0) * s; oy = Math.min(band + 20, Math.max(band, freeY * 0.35)) - UY0 * s;
     ox = Math.min(0, Math.max(W - CAL.plate[0] * s, ox)); oy = Math.min(0, Math.max(H - CAL.plate[1] * s, oy));
   }
   const pw = CAL.plate[0] * s, ph = CAL.plate[1] * s;
@@ -414,24 +416,24 @@ const vsQuad = `varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position
 let mats = null, pGeo, pts, quadScene, quadCam, quadMesh, dbgScene;
 function initGL() {
   pGeo = new THREE.BufferGeometry();
-  pGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(MAXN * 4 * 3), 3).setUsage(THREE.DynamicDrawUsage));
-  pGeo.setAttribute('gen', new THREE.BufferAttribute(new Float32Array(MAXN * 4), 1).setUsage(THREE.DynamicDrawUsage));
-  pGeo.setAttribute('sz', new THREE.BufferAttribute(new Float32Array(MAXN * 4), 1).setUsage(THREE.DynamicDrawUsage));
+  pGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(MAXN * 5 * 3), 3).setUsage(THREE.DynamicDrawUsage));
+  pGeo.setAttribute('gen', new THREE.BufferAttribute(new Float32Array(MAXN * 5), 1).setUsage(THREE.DynamicDrawUsage));
+  pGeo.setAttribute('sz', new THREE.BufferAttribute(new Float32Array(MAXN * 5), 1).setUsage(THREE.DynamicDrawUsage));
   pGeo.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0.3, 0.8), 5);
-  const pv = `uniform float uScale, uRad; attribute float gen; attribute float sz; varying float vZ; varying float vR; varying float vP; varying float vJ; varying float vT;
-    void main(){ vec4 mv=modelViewMatrix*vec4(position,1.); float w=step(3.5,gen); float g=gen-4.*w; vP=1.-w; vJ=step(1.5,g)*step(2.5,-g+5.)*(1.-w)*step(g,2.5);
+  const pv = `uniform float uScale, uRad; attribute float gen; attribute float sz; varying float vZ; varying float vR; varying float vP; varying float vJ; varying float vT; varying float vW;
+    void main(){ vW=step(3.5,gen); vec4 mv=modelViewMatrix*vec4(position,1.); float w=step(3.5,gen); float g=gen-4.*w; vP=1.-w; vJ=step(1.5,g)*step(2.5,-g+5.)*(1.-w)*step(g,2.5);
       // jet: thin, and narrower near the camera (top of screen); splash: fine droplets; film: thin; water sheet: wide
       float jr = 0.40*clamp(-mv.z/0.75,0.55,1.0);
-      vR=uRad*sz*(g>1.5?jr:(g>0.5?0.28:(w<0.5?0.95:0.85)))*(1.+0.9*w);
-      vT=(g<0.5&&w<0.5)?0.55:1.0; gl_PointSize=max(1.5, vR*uScale/-mv.z); vZ=-mv.z; gl_Position=projectionMatrix*mv; }`;
+      vR=uRad*sz*(g>1.5?jr:(g>0.5?0.28:(w<0.5?0.95:0.92)));
+      vT=(g<0.5&&w<0.5)?0.55:(w>0.5?0.45:1.0); gl_PointSize=max(1.5, vR*uScale/-mv.z); vZ=-mv.z; gl_Position=projectionMatrix*mv; }`;
   const depthMat = new THREE.ShaderMaterial({
     uniforms: { uScale: { value: 1 }, uRad: { value: RAD } }, vertexShader: pv,
-    fragmentShader: `varying float vZ; varying float vR; varying float vP; varying float vJ; varying float vT; void main(){ vec2 c=gl_PointCoord*2.-1.; c.y=-c.y; float r2=dot(c,c); if(r2>1.) discard; float nz=sqrt(1.-r2); gl_FragColor=vec4(vZ-nz*vR*(vT<0.9?0.04:(vP<0.5?0.3:1.)),0.,0.,1.); }`,
+    fragmentShader: `varying float vZ; varying float vR; varying float vP; varying float vJ; varying float vT; varying float vW; void main(){ vec2 c=gl_PointCoord*2.-1.; c.y=-c.y; float r2=dot(c,c); if(r2>1.) discard; float nz=sqrt(1.-r2); gl_FragColor=vec4(vZ-nz*vR*(vT<0.9?0.04:(vP<0.5?0.3:1.)),0.,0.,1.); }`,
     depthTest: true, depthWrite: true, blending: THREE.NoBlending,
   });
   const thickMat = new THREE.ShaderMaterial({
     uniforms: { uScale: { value: 1 }, uRad: { value: RAD } }, vertexShader: pv,
-    fragmentShader: `varying float vZ; varying float vR; varying float vP; varying float vJ; varying float vT; void main(){ vec2 c=gl_PointCoord*2.-1.; float r2=dot(c,c); if(r2>1.) discard; float nz=sqrt(1.-r2); float t=nz*vR*2.*100.*vT*(vJ>0.5?4.0:1.0); gl_FragColor=vec4(t,t*vP,t*vJ,1.); }`,
+    fragmentShader: `varying float vZ; varying float vR; varying float vP; varying float vJ; varying float vT; varying float vW; void main(){ vec2 c=gl_PointCoord*2.-1.; float r2=dot(c,c); if(r2>1.) discard; float nz=sqrt(1.-r2); float t=nz*vR*2.*100.*vT*(vJ>0.5?4.0:1.0); gl_FragColor=vec4(t,t*vP,t*vJ,t*vW); }`,
     depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending, transparent: true,
   });
   const blurDepth = new THREE.ShaderMaterial({
@@ -448,17 +450,17 @@ function initGL() {
   const blurThick = new THREE.ShaderMaterial({
     uniforms: { tex: { value: null }, dir: { value: new THREE.Vector2() }, rad: { value: 6 } }, vertexShader: vsQuad,
     fragmentShader: `uniform sampler2D tex; uniform vec2 dir; uniform float rad; varying vec2 vUv;
-      void main(){ vec3 s2=vec3(0.); float w=0.; float sig=rad*0.5; for(int i=-12;i<=12;i++){ float fi=float(i); if(abs(fi)>rad) continue; float ws=exp(-fi*fi/(2.*sig*sig)); s2+=texture2D(tex,vUv+dir*fi).rgb*ws; w+=ws; } gl_FragColor=vec4(s2/w,1.); }`,
+      void main(){ vec4 s2=vec4(0.); float w=0.; float sig=rad*0.5; for(int i=-12;i<=12;i++){ float fi=float(i); if(abs(fi)>rad) continue; float ws=exp(-fi*fi/(2.*sig*sig)); s2+=texture2D(tex,vUv+dir*fi)*ws; w+=ws; } gl_FragColor=s2/w; }`,
     depthTest: false, depthWrite: false,
   });
   const comp = new THREE.ShaderMaterial({
-    uniforms: { bg: { value: bgTex }, dep: { value: null }, thk: { value: null }, invP: { value: new THREE.Matrix4() }, texel: { value: new THREE.Vector2() }, show: { value: 1 } },
+    uniforms: { bg: { value: bgTex }, dep: { value: null }, thk: { value: null }, invP: { value: new THREE.Matrix4() }, texel: { value: new THREE.Vector2() }, show: { value: 1 }, drn: { value: new THREE.Vector2(0.5, 0.75) }, uT: { value: 0 } },
     vertexShader: vsQuad,
-    fragmentShader: `uniform sampler2D bg, dep, thk; uniform mat4 invP; uniform vec2 texel; uniform float show; varying vec2 vUv;
+    fragmentShader: `uniform sampler2D bg, dep, thk; uniform mat4 invP; uniform vec2 texel; uniform float show; uniform vec2 drn; uniform float uT; varying vec2 vUv;
       vec3 vpos(vec2 uv, float d){ vec4 v=invP*vec4(uv*2.-1.,-1.,1.); v/=v.w; return v.xyz/(-v.z)*d; }
       void main(){
         vec3 base=texture2D(bg,vUv).rgb;
-        float d=texture2D(dep,vUv).r; vec3 tk=texture2D(thk,vUv).rgb; float th=tk.r; float pf=clamp(tk.g/max(th,1e-4),0.,1.); float jf=clamp(tk.b/max(th,1e-4),0.,1.);
+        float d=texture2D(dep,vUv).r; vec4 tk4=texture2D(thk,vUv); vec3 tk=tk4.rgb; float th=tk.r; float wf=clamp(tk4.a/max(th,1e-4),0.,1.); float pf=clamp(tk.g/max(th,1e-4),0.,1.); float jf=clamp(tk.b/max(th,1e-4),0.,1.);
         if(d<=0.||show<0.5||th<0.02){ gl_FragColor=vec4(base,1.); return; }
         vec3 p=vpos(vUv,d);
         float dr=texture2D(dep,vUv+vec2(texel.x,0.)).r, dl=texture2D(dep,vUv-vec2(texel.x,0.)).r;
@@ -490,6 +492,21 @@ function initGL() {
                  + vec3(1.,0.98,0.88)*0.10*smoothstep(0.8,1.0,ndv) + vec3(0.92,0.94,0.97)*fres*0.5;
         col=mix(col,jcol,jf);
         float a=mix(smoothstep(0.10,0.55,th),smoothstep(0.02,0.5,th),jf)*mix(mix(0.45,0.7,1.-pf),0.6,jf); col+=spec*vec3(1.,0.98,0.9)*0.6*(1.-jf);
+        // flush water: one clear fine sheet - porcelain refraction, flow-aligned streak glints, foam at thin leading edges + at the drain
+        if(wf>0.01){
+          vec2 fd=drn-vUv; float dl=length(fd*vec2(1.,1.9)); fd=normalize(fd+1e-5); vec2 pp=vec2(-fd.y,fd.x);
+          float across=dot(vUv,pp)*520.+sin(dot(vUv,fd)*40.)*2., along=dot(vUv,fd)*60.-uT*9.;
+          float stk=pow(max(0.,sin(across+3.*sin(along*0.7+across*0.013))),14.)*(0.5+0.5*sin(along+across*0.05));
+          vec2 wuv=vUv+n.xy*0.012+pp*0.004*sin(across*0.11+along);
+          vec3 wr=texture2D(bg,clamp(wuv,0.001,0.999)).rgb;
+          float edge=smoothstep(0.35,0.06,th)*smoothstep(0.0,0.04,th);
+          float fz=0.5+0.5*sin(vUv.x*1300.+sin(vUv.y*900.)*3.)*sin(vUv.y*1100.-uT*6.);
+          float foam=clamp(edge*0.3+smoothstep(0.10,0.0,dl)*0.7,0.,1.)*smoothstep(0.45,0.95,fz);
+          vec3 wcol=wr*vec3(0.97,0.99,1.02)*1.01+vec3(0.012,0.016,0.02)+stk*vec3(0.9,0.94,1.0)*0.35*smoothstep(0.2,0.8,th)+spec*0.6+fres*0.12;
+          wcol=mix(wcol,vec3(0.93,0.95,0.96),foam*0.55);
+          col=mix(col,wcol,wf);
+          a=mix(a,smoothstep(0.02,0.6,th)*mix(0.75,0.9,foam),wf);
+        }
         gl_FragColor=vec4(mix(base,col,a),1.);
       }`,
     depthTest: false, depthWrite: false,
@@ -566,8 +583,14 @@ function render() {
     if ((P.x[i] - CX) * FWD.x + (P.y[i] - CY) * FWD.y + (P.z[i] - CZ) * FWD.z < 0.13 || !visible(P.x[i], P.y[i], P.z[i])) continue; pos[m * 3] = P.x[i]; pos[m * 3 + 1] = P.y[i]; pos[m * 3 + 2] = P.z[i]; gen[m] = (P.gen[i] ? 1 : (P.touched[i] ? 0 : 2)) + (P.water[i] ? 4 : 0); szA[m] = (!P.water[i] && P.touched[i] && !P.gen[i]) ? Math.max(0.3, 1 - Math.max(0, P.age[i] - 0.7) / 1.9) * Math.min(1, 0.25 + P.rho[i] / RHO0 * 0.6) : 1; m++;
     if (!P.touched[i] && !P.water[i]) { // airborne jet: gap-fill splats back along the path -> continuous, organic column
       for (let k = 1; k <= 3; k++) { const f = k / 4 / 120; pos[m * 3] = P.x[i] - P.vx[i] * f; pos[m * 3 + 1] = P.y[i] - P.vy[i] * f; pos[m * 3 + 2] = P.z[i] - P.vz[i] * f; gen[m] = 2; szA[m] = 0.9 + 0.2 * Math.sin(i * 2.3 + k); m++; }
-    } else if (P.touched[i] && m < MAXN * 4 - 2) { // landed liquid: extra small splats around each particle -> continuous fine film, no blobs
+    } else if (P.touched[i] && m < MAXN * 5 - 2) { // landed liquid: extra small splats around each particle -> continuous fine film, no blobs
       const sz0 = szA[m - 1], g0 = gen[m - 1], j = 0.0045;
+      if (P.water[i]) { // flush sheet: 4 small splats strung along the flow -> streaky continuous sheet, no discs
+        const vl = Math.hypot(P.vx[i], P.vy[i], P.vz[i]) || 1, ux = P.vx[i] / vl, uy = P.vy[i] / vl, uz = P.vz[i] / vl;
+        for (let k = 0; k < 4 && m < MAXN * 5; k++) { const f = (k - 1.5) * 0.007, o = Math.sin(i * 2.17 + k * 1.9) * 0.003;
+          pos[m * 3] = P.x[i] + ux * f + o; pos[m * 3 + 1] = P.y[i] + uy * f; pos[m * 3 + 2] = P.z[i] + uz * f - o * 0.5; gen[m] = 4; szA[m] = 0.8 + 0.25 * Math.sin(i * 1.3 + k); m++; }
+        continue;
+      }
       for (let k = 0; k < 2; k++) { const a = i * 1.618 + k * 3.14; pos[m * 3] = P.x[i] + Math.cos(a) * j; pos[m * 3 + 1] = P.y[i] + Math.sin(a) * j * 0.5; pos[m * 3 + 2] = P.z[i] + Math.sin(a) * j; gen[m] = g0; szA[m] = sz0; m++; }
     }
   }
@@ -589,7 +612,7 @@ function render() {
   bt.tex.value = RT.thick.texture; bt.dir.value.set(1 / rw, 0); runQuad(mats.blurThick, RT.ta);
   bt.tex.value = RT.ta.texture; bt.dir.value.set(0, 1 / rh); runQuad(mats.blurThick, RT.tb);
   const cu = mats.comp.uniforms;
-  cu.bg.value = bgTex; cu.dep.value = RT.a.texture; cu.thk.value = RT.tb.texture; cu.invP.value.copy(cam.projectionMatrixInverse); cu.texel.value.set(1 / rw, 1 / rh);
+  cu.bg.value = bgTex; cu.dep.value = RT.a.texture; cu.thk.value = RT.tb.texture; cu.invP.value.copy(cam.projectionMatrixInverse); cu.texel.value.set(1 / rw, 1 / rh); { const d = toScreen(DRAIN); cu.drn.value.set(d[0] / W, 1 - d[1] / H); } cu.uT.value = performance.now() / 1000;
   renderer.setRenderTarget(null); renderer.setClearColor(0x000000, 1); renderer.clear();
   runQuad(mats.comp, null);
   renderer.getDrawingBufferSize(ribMat.uniforms.res.value); ribMat.uniforms.bg.value = bgTex;
