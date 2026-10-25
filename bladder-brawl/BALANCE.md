@@ -260,3 +260,19 @@ Notes:
 - **Results jump between runs.** Results depend on the upgrade path. Whether a skilled player clears L8 early decides the rest, so Iron skilled swung between 25 and 57 across runs with nearly the same knobs.
 - **Possible slack.** Pee-Wee casual and Iron skilled are above target, but the bot still beats real phone players in quick decisions. If Iron feels too brutal on phones, raise hard `dmg` to .9.
 - **Next levers if it's still too easy:** Regular `hpa` and `lives`.
+
+## v7.1 — run-based coins & upgrades
+
+Tilo (phone) hit L18-ish with 3 streams, restarted, and still had 3 streams at L1 because coins/upgrades were global and permanent.
+
+### Fix
+- A **run** = one playthrough from L1 on a given tier.
+- Coins and upgrades live in `S.rd[tier]` and reset on **NEW RUN**.
+- Stars / best unlock (`S.sd`, `S.ud`) stay permanent per tier.
+- Mid-run you can only play the current level (`S.prog`). Replaying earlier levels is disallowed (start a NEW RUN instead).
+- Entering a level snapshots coins+upgrades; **Try again** / pause Restart restores that snapshot (no farming).
+- Shop header: **Upgrades · This run**.
+- Migration (`S.runV=71`): wipe coins/upgrades to zero for all tiers. Stars kept. Avoids carrying a maxed stream into a fresh start.
+
+### Sim
+The v7 sim already assumed a greedy per-run upgrade path from zero. Re-ran 28 seeds; numbers identical to v7 FINAL (Pee-Wee 46.7/77.6/97.9, Regular 16.8/44.4/81.1, Iron 2.8/19.7/47.2).

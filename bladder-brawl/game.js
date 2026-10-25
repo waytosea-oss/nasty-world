@@ -24,9 +24,25 @@ const S=Object.assign({unl:1,stars:[],coins:0,up:{pres:0,wid:0,rng:0,cap:0,spr:0
 S.up=Object.assign({pres:0,wid:0,rng:0,cap:0,spr:0,flush:0},S.up);S.seen=S.seen||{};
 /* v6.2: stars + unlock progress kept per difficulty; coins/upgrades shared. Old saves (v6.1 balance) land in EASY */
 if(!S.sd){S.sd={easy:S.stars||[],normal:[],hard:[]};S.ud={easy:S.unl||1,normal:1,hard:1};}
-function applyDiff(k){if(!DIFFS[k])k='normal';if(S.sd[S.diff||'normal'])S.ud[S.diff||'normal']=S.unl;S.diff=k;S.stars=S.sd[k];S.unl=S.ud[k]||1;setDiffVals(Q.get('diff')||k);}
+/* v7.1: coins + upgrades are per-run (per tier). Stars / best unlock stay permanent.
+   Migration: wipe carried upgrades so restart cannot keep a 3-stream build at L1 (Tilo's bug). */
+function blankUp(){return {pres:0,wid:0,rng:0,cap:0,spr:0,flush:0};}
+function blankRun(){return {coins:0,up:blankUp(),prog:1,snap:{}};}
+function stashRun(){if(!S.rd||!S.diff)return;S.rd[S.diff]={coins:S.coins|0,up:Object.assign(blankUp(),S.up),prog:S.prog||1,snap:S.snap||{}};}
+function loadRun(k){if(!S.rd)S.rd={};if(!S.rd[k])S.rd[k]=blankRun();const R=S.rd[k];S.coins=R.coins|0;S.up=Object.assign(blankUp(),R.up);S.prog=R.prog||1;S.snap=R.snap||{};}
+if(!S.runV||S.runV<71){S.coins=0;S.up=blankUp();S.rd={easy:blankRun(),normal:blankRun(),hard:blankRun()};S.prog=1;S.snap={};S.runV=71;}
+function applyDiff(k){if(!DIFFS[k])k='normal';stashRun();if(S.sd[S.diff||'normal'])S.ud[S.diff||'normal']=S.unl;S.diff=k;S.stars=S.sd[k];S.unl=S.ud[k]||1;loadRun(k);setDiffVals(Q.get('diff')||k);}
 if(!SIMMODE){S.diff=S.diff||'normal';applyDiff(S.diff);}
-function save(){if(SIMMODE)return;S.ud[S.diff]=S.unl;S.sd[S.diff]=S.stars;try{localStorage.setItem(SKEY,JSON.stringify(S))}catch(e){}}
+function save(){if(SIMMODE)return;S.ud[S.diff]=S.unl;S.sd[S.diff]=S.stars;stashRun();try{localStorage.setItem(SKEY,JSON.stringify(S))}catch(e){}}
+function runActive(){return(S.prog|0)>1||(S.coins|0)>0||Object.values(S.up).some(v=>v>0);}
+function doNewRun(){S.coins=0;S.up=blankUp();S.prog=1;S.snap={};save();refreshCoins();toast('New run — coins & upgrades reset.');}
+let nrunFrom='title';function askNewRun(from){nrunFrom=from||'title';if(!runActive()){doNewRun();if(nrunFrom==='levels'){renderLevels();showScr('levels');}return;}showScr('nrun');}
+function enterLevel(Lv){Lv=+Lv;if(Lv<1||Lv>NL)return;
+  if(Lv>S.prog){SFX.deny();toast('Beat level '+S.prog+' first this run!');return;}
+  if(Lv<S.prog){SFX.deny();toast('Mid-run: only level '+S.prog+'. Start a NEW RUN to replay.');return;}
+  if(!S.snap[Lv]){S.snap[Lv]={coins:S.coins|0,up:Object.assign(blankUp(),S.up)};}
+  else{S.coins=S.snap[Lv].coins|0;S.up=Object.assign(blankUp(),S.snap[Lv].up);}
+  save();go(Lv);}
 /* ---------------- content ---------------- */
 const BT={
  mosq:{name:'Skeeter',r:13,hp:2.2,spd:44,pts:6,res:0},
@@ -621,11 +637,12 @@ function togs(){for(const k of['mus','sfx','vib'])document.querySelectorAll('.t-
 function tog(k){S[k]=S[k]?0:1;save();applyAudio();togs();if(k==='mus'){if(S.mus&&G.state==='play'&&!G.paused)bgmStart();if(!S.mus)bgmStop();}if(k==='vib'&&S.vib)vib(30);SFX.click();}
 let wPage=0;
 function renderLevels(){const ch=wPage;$('wName').textContent='Chapter '+(ch+1)+': '+CH[ch].n;$('wSub').textContent=CH[ch].s;const g=$('wGrid');g.innerHTML='';
-  for(let i=1;i<=6;i++){const Lv=ch*6+i,lock=Lv>S.unl,st=S.stars[Lv]||0;const b=document.createElement('button');b.className='lv'+(lock?' lock':'')+(BOSS[Lv]?' boss':'');
-    b.innerHTML=lock?'<span class="lk">\uD83D\uDD12</span>':`${Lv}<span class="st">${'\u2605'.repeat(st)}<i>${'\u2605'.repeat(3-st)}</i></span>`+(BOSS[Lv]?'<span class="bt">BOSS</span>':'');
-    b.onclick=()=>{if(lock){SFX.deny();toast('Beat level '+(Lv-1)+' first!');return;}SFX.click();go(Lv);};g.appendChild(b);}
+  if($('runTag'))$('runTag').textContent=S.prog>NL?'Run clear — NEW RUN to go again':'This run · next L'+S.prog;
+  for(let i=1;i<=6;i++){const Lv=ch*6+i,st=S.stars[Lv]||0,ahead=Lv>S.prog,behind=Lv<S.prog,lock=ahead;const b=document.createElement('button');b.className='lv'+(lock||behind?' lock':'')+(BOSS[Lv]?' boss':'')+(Lv===S.prog?' cur':'');
+    b.innerHTML=ahead?'<span class="lk">\uD83D\uDD12</span>':`${Lv}<span class="st">${'\u2605'.repeat(st)}<i>${'\u2605'.repeat(3-st)}</i></span>`+(BOSS[Lv]?'<span class="bt">BOSS</span>':'');
+    b.onclick=()=>{if(ahead){SFX.deny();toast(S.prog>NL?'Run clear — start a NEW RUN!':'Beat level '+S.prog+' first this run!');return;}if(behind){SFX.deny();toast('Mid-run: only level '+S.prog+'. NEW RUN to replay.');return;}SFX.click();enterLevel(Lv);};g.appendChild(b);}
   $('wDots').innerHTML=[0,1,2].map(i=>`<i class="${i===ch?'on':''}"></i>`).join('');$('wPrev').style.visibility=ch>0?'visible':'hidden';$('wNext').style.visibility=ch<2?'visible':'hidden';refreshCoins();}
-function renderShop(){const box=$('ups');box.innerHTML='';for(const u of UPG){const l=S.up[u.k],mx=l>=u.max,c=mx?0:u.c[l];const d=document.createElement('div');d.className='up';
+function renderShop(){const sh=$('shoph');if(sh)sh.innerHTML='Upgrades <small style="opacity:.7;font-size:.55em">· This run</small>';const box=$('ups');box.innerHTML='';for(const u of UPG){const l=S.up[u.k],mx=l>=u.max,c=mx?0:u.c[l];const d=document.createElement('div');d.className='up';
   d.innerHTML=`<div class="ic ic-${u.k}"></div><div class="tx"><div class="nm">${u.name} <small>Lv ${l}/${u.max}</small></div><div class="ds">${u.d}</div><div class="pips">${'<i class="on"></i>'.repeat(l)}${'<i></i>'.repeat(u.max-l)}</div></div>`;
   const b=document.createElement('button');b.className='btn orange buy'+(mx?' max':S.coins>=c?'':' no');b.innerHTML=mx?'MAX':`<span class="coin"></span>${c}`;
   b.onclick=()=>{if(mx)return;if(S.coins<c){SFX.deny();toast('Not enough coins. Go splash more bugs!');return;}S.coins-=c;S.up[u.k]++;save();SFX.coin();vib(20);renderShop();};d.appendChild(b);box.appendChild(d);}refreshCoins();}
@@ -635,7 +652,7 @@ function pauseG(){if(G.state!=='play'||G.paused)return;G.paused=true;G.f.down=fa
 function resumeG(){G.paused=false;showScr('none');if(S.mus)bgmStart();SFX.click();}
 function endLevel(win){G.state='end';G.earned=Math.round(G.earned*D.coin);if(!SIMMODE)SCN.ev(win?'win':'lose');G.f.down=false;if(!SIMMODE){streamSnd(0);bgmStop();$('hud').classList.remove('on');}
   const stars=G.lost===0?3:G.lost<=1?2:1;G.result={win,stars,earned:G.earned,lost:G.lost};if(SIMMODE)return;
-  if(win){const bonus=20+curL*8+stars*10;S.coins+=G.earned+bonus;S.stars[curL]=Math.max(S.stars[curL]||0,stars);if(curL>=S.unl&&curL<NL)S.unl=curL+1;save();SFX.win();vib([30,40,30]);
+  if(win){const bonus=20+curL*8+stars*10;S.coins+=G.earned+bonus;S.stars[curL]=Math.max(S.stars[curL]||0,stars);if(curL>=S.unl&&curL<NL)S.unl=curL+1;if(curL>=(S.prog||1))S.prog=Math.min(NL+1,curL+1);save();SFX.win();vib([30,40,30]);
     if(curL===NL){$('endStars').textContent=S.stars.slice(1).reduce((a,b)=>a+(b||0),0)+' / '+NL*3;showScr('ending');return;}
     $('wSubT').textContent='Level '+curL+' cleared!';$('wEarn').textContent=G.earned+bonus;$('wRib').textContent=['','Messy win','Solid splash','Flawless flow'][stars];$('wSubT').textContent='Level '+curL+' cleared! Best streak: '+G.bestStreak;
     const sw=$('wStars');sw.innerHTML='';for(let i=0;i<3;i++){const s=document.createElement('span');s.className='star'+(i<stars?' got':'')+(i===1?' mid':'');s.textContent='\u2605';sw.appendChild(s);if(i<stars)setTimeout(()=>{s.classList.add('pop');SFX.pop(1+i*.3);},350+i*260);}
@@ -657,7 +674,7 @@ cv.addEventListener('pointermove',e=>{if(G.f.id!==e.pointerId)return;const p=toL
   if(aimMode==='relative')setAimT(G.f.x+(p.x-lastPX)*GAIN,G.f.y+(p.y-lastPY)*GAIN);else if(aimMode==='offset')setAimT(p.x,p.y-OFFY/SC);else setAimT(p.x,p.y);lastPX=p.x;lastPY=p.y;});
 const up=e=>{if(G.f.id!==e.pointerId)return;G.f.down=false;G.f.id=null;};cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);cv.addEventListener('lostpointercapture',up);
 document.addEventListener('touchend',e=>{if(!e.touches.length&&G.f.id!=null){G.f.down=false;G.f.id=null;}});
-function setDiff(k,restart){if(!DIFFS[k])return;applyDiff(k);save();document.querySelectorAll('.dsel button').forEach(b=>b.classList.toggle('on',b.dataset.diff===DIFF));if(restart&&G.state==='play'){go(Math.min(curL,S.unl));}}
+function setDiff(k,restart){if(!DIFFS[k])return;applyDiff(k);save();document.querySelectorAll('.dsel button').forEach(b=>b.classList.toggle('on',b.dataset.diff===DIFF));if(restart&&G.state==='play'){enterLevel(Math.min(curL,S.prog||1));}}
 function setAimMode(m){if(!AIMM.includes(m))return;aimMode=m;S.aim=m;save();document.querySelectorAll('.aimsel button').forEach(b=>b.classList.toggle('on',b.dataset.aim===m));}
 document.addEventListener('touchmove',e=>{if(e.target.closest&&e.target.closest('.scroll'))return;e.preventDefault();},{passive:false});
 document.addEventListener('gesturestart',e=>e.preventDefault());document.addEventListener('contextmenu',e=>e.preventDefault());
@@ -666,16 +683,18 @@ window.addEventListener('keydown',e=>{if(G.state!=='play')return;if(e.key===' ')
 ['pointerdown','touchend','keydown'].forEach(ev=>document.addEventListener(ev,auInit,true));
 /* ---------------- wiring ---------------- */
 function wire(){const on=(id,f)=>{const e=$(id);if(e)e.addEventListener('click',f);};
-  on('bStart',()=>{SFX.click();auInit();if(S.unl===1&&!S.stars[1])go(1);else{wPage=Math.min(2,Math.floor((S.unl-1)/6));renderLevels();showScr('levels');}});
+  on('bStart',()=>{SFX.click();auInit();if((S.prog||1)===1&&!runActive()&&!S.stars[1])enterLevel(1);else{wPage=Math.min(2,Math.floor(((S.prog||1)-1)/6));renderLevels();showScr('levels');}});
   on('bShop1',()=>{SFX.click();shopNext=0;shopFrom='title';renderShop();showScr('shop');});on('bShop2',()=>{SFX.click();shopNext=0;shopFrom='levels';renderShop();showScr('shop');});
   on('bBack1',()=>{SFX.click();showScr('title');});on('bBack2',()=>{SFX.click();if(shopNext){renderLevels();showScr('levels');}else{if(shopFrom==='levels')renderLevels();showScr(shopFrom);}});
-  on('bShopGo',()=>{SFX.click();go(shopNext||Math.min(S.unl,NL));});
+  on('bShopGo',()=>{SFX.click();enterLevel(shopNext||S.prog||1);});
+  on('bNewRun1',()=>{SFX.click();askNewRun('title');});on('bNewRun2',()=>{SFX.click();askNewRun('levels');});on('bNewRunE',()=>{SFX.click();askNewRun('ending');});
+  on('bNrunYes',()=>{SFX.click();doNewRun();if(nrunFrom==='ending')showScr('title');else{renderLevels();showScr(nrunFrom==='title'?'levels':'levels');}});on('bNrunNo',()=>{SFX.click();showScr(nrunFrom==='ending'?'ending':nrunFrom);});
   on('wPrev',()=>{wPage=Math.max(0,wPage-1);SFX.click();renderLevels();});on('wNext',()=>{wPage=Math.min(2,wPage+1);SFX.click();renderLevels();});
   on('bTipOk',()=>{S.tip=1;save();SFX.click();showScr('none');G.paused=false;});
   on('bPause',e=>{e.stopPropagation();SFX.click();pauseG();});on('bFlush',e=>{e.stopPropagation();doFlush();});
-  on('bResume',resumeG);on('bRestart',()=>{SFX.click();go(curL);});on('bQuit',()=>{SFX.click();G.state='menu';renderLevels();showScr('levels');$('hud').classList.remove('on');});
-  on('bNext',()=>{SFX.click();go(Math.min(NL,curL+1));});on('bWinShop',()=>{SFX.click();shopNext=Math.min(NL,curL+1);renderShop();showScr('shop');});on('bWinMenu',()=>{SFX.click();renderLevels();showScr('levels');});
-  on('bRetry',()=>{SFX.click();go(curL);});on('bLoseShop',()=>{SFX.click();shopNext=curL;renderShop();showScr('shop');});on('bLoseMenu',()=>{SFX.click();renderLevels();showScr('levels');});
+  on('bResume',resumeG);on('bRestart',()=>{SFX.click();enterLevel(curL);});on('bQuit',()=>{SFX.click();G.state='menu';renderLevels();showScr('levels');$('hud').classList.remove('on');});
+  on('bNext',()=>{SFX.click();enterLevel(Math.min(NL,curL+1));});on('bWinShop',()=>{SFX.click();shopNext=Math.min(NL,curL+1);renderShop();showScr('shop');});on('bWinMenu',()=>{SFX.click();renderLevels();showScr('levels');});
+  on('bRetry',()=>{SFX.click();enterLevel(curL);});on('bLoseShop',()=>{SFX.click();shopNext=curL;renderShop();showScr('shop');});on('bLoseMenu',()=>{SFX.click();renderLevels();showScr('levels');});
   on('bCardOk',cardOk);
   on('bEndOk',()=>{SFX.click();renderLevels();showScr('levels');});
   ['bHub0','bHubP','bHubW','bHubL','bHubE'].forEach(id=>on(id,goHub));
