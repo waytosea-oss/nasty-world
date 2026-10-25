@@ -131,3 +131,27 @@ after (v6 fluid, FXK 1.4)
 Same overall curve. Per-level shifts beyond noise: L5/L13 are a bit harder for casual aim (the jet needs to actually be on
 the bug; there is no wide fan any more), L11/L15 a bit easier; the final boss is slightly harder for average players (50% vs 75%).
 The plain `?sim` (no `fxsim`) still uses the v5g 2D model and is what the WebGL-less fallback plays.
+
+## v6.1 harder (Oct 2026, phone playtest: "过关太容易了")
+Humans with the Pad aim and the full-bowl flush cleared levels far more easily than the bots suggested, so difficulty goes up.
+URL overrides for testing: `?hpa= ?hpb= ?spb= ?hpboss= ?hpfin= ?flw=`.
+
+- Normal levels: bug HP × (1 + **HPB 0.25**·(L−1)/17), so L1 is unchanged and L17 has +24% HP. Speed is unchanged (**SPB 0**; speed ramps crushed the late levels in the sim).
+- Flush: a normal bug is washed into the drain only if it is already below **FLW 60%** of max HP. Healthier bugs take 60% of max HP and get shoved instead. The boss rule (12% once) is unchanged.
+- Boss levels L6/L12 are unchanged (HPBOSS 1). On the final level (L18, Mama Legs) HP is ×**0.92**. Players now reach L18 with fewer upgrades, because the harder mid-levels earn fewer coins, so her raw HP needed a small cut to land at the target.
+
+Sim (`_work/sim6.py`, real fluid, 8 seeds/level, greedy upgrade path):
+```
+            win% per level L1..L18                                          avg
+v5g 2D .35  100 87 100 100 75 0 100 100 50 87 25 12 50 62 0 25 62 0          57
+v6     .35  100 100 87 100 37 25 100 87 12 100 87 12 12 25 62 62 62 12       60
+v6.1   .35  100 100 87 100 0 0 100 62 0 62 50 50 0 0 0 0 37 12              42
+v5g 2D .6   (see v6)                                                          94
+v6     .6                                                                     94
+v6.1   .6   100 100 100 100 100 100 100 100 62 100 100 100 100 62 100 50 100 87   92
+v6     .85                                                                    98
+v6.1   .85  100 ×15, 62 (L16), 100, 87                                        97
+```
+- Final boss, average player (0.6), 28 seeds: **35%** (v6: 50%, v5g: 75%). The 8-seed table above shows 87% for L18, which is seed noise: L18 is very path-dependent.
+- Early levels (L1–L4) are still ~100% even for casual aim. L5 (first gecko wave), L9 and L13–L16 are now the walls for casual players.
+- Skilled stays ~97% in the sim. The 0.85 bot aims almost perfectly, so the human gap is larger than the bot gap. If phone tests still feel easy, raise HPB next (0.35 gave casual 37 / average 85 in the sim).

@@ -186,7 +186,7 @@ function emitFlush(dt) {
   if (flushT <= 0) return;
   flushT += dt; if (flushT > FLUSH_DUR) { flushT = 0; return; }
   const ramp = Math.min(1, flushT / 0.25) * Math.max(0.25, Math.min(1, (2.0 - flushT) / 0.8)) * (flushT < 2.4 ? 1 : 0);
-  flushAcc += 3000 * dt * ramp * (0.6 + 0.4 * LEVELS[qi].rt / 0.75);
+  flushAcc += 4800 * dt * ramp * (0.6 + 0.4 * LEVELS[qi].rt / 0.75);
   const n = Math.floor(flushAcc); flushAcc -= n;
   for (let k = 0; k < n && P.n < MAXN; k++) {
     const a = (Math.random() - 0.5) * 2.7, el = 0.42 + Math.random() * 0.22;
@@ -268,8 +268,8 @@ function initGL() {
   const pv = `uniform float uScale, uRad, uWid; attribute float gen; attribute float sz; varying float vZ; varying float vR; varying float vP; varying float vJ; varying float vT; varying float vW; varying float vS;
     void main(){ float s=step(7.5,gen); float gg=gen-8.*s; vS=s; vW=step(3.5,gg); vec4 mv=modelViewMatrix*vec4(position,1.); float w=vW; float g=gg-4.*w; vP=1.-w; vJ=step(1.5,g)*(1.-w)*step(g,2.5);
       float jr = 0.40*uWid*clamp(-mv.z/0.75,0.55,1.0);
-      vR=uRad*sz*(g>1.5?jr:(g>0.5?0.28:(w<0.5?0.95:0.92)));
-      vT=(g<0.5&&w<0.5)?0.55:(w>0.5?0.45:1.0); gl_PointSize=max(1.5, vR*uScale/-mv.z); vZ=-mv.z; gl_Position=projectionMatrix*mv; }`;
+      vR=uRad*sz*(g>1.5?jr:(g>0.5?0.28:(w<0.5?0.95:0.78)));
+      vT=(g<0.5&&w<0.5)?0.55:(w>0.5?0.62:1.0); gl_PointSize=max(1.5, vR*uScale/-mv.z); vZ=-mv.z; gl_Position=projectionMatrix*mv; }`;
   const depthMat = new THREE.ShaderMaterial({ uniforms: { uScale: { value: 1 }, uRad: { value: RAD }, uWid: { value: 1 } }, vertexShader: pv,
     fragmentShader: `varying float vZ; varying float vR; varying float vP; varying float vJ; varying float vT; varying float vW; varying float vS; void main(){ vec2 c=gl_PointCoord*2.-1.; c.y=-c.y; float r2=dot(c,c); if(r2>1.) discard; float nz=sqrt(1.-r2); gl_FragColor=vec4(vZ-nz*vR*(vT<0.9?0.04:(vP<0.5?0.3:1.)),0.,0.,1.); }`,
     depthTest: true, depthWrite: true, blending: THREE.NoBlending });
@@ -334,10 +334,10 @@ function initGL() {
           float edge=smoothstep(0.35,0.06,th)*smoothstep(0.0,0.04,th);
           float fz=0.5+0.5*sin(vUv.x*1300.+sin(vUv.y*900.)*3.)*sin(vUv.y*1100.-uT*6.);
           float foam=clamp(edge*0.3+smoothstep(0.10,0.0,dl2)*0.7,0.,1.)*smoothstep(0.45,0.95,fz);
-          vec3 wcol=wr*vec3(0.97,0.99,1.02)*1.01+vec3(0.012,0.016,0.02)+stk*vec3(0.9,0.94,1.0)*0.35*smoothstep(0.2,0.8,th)+spec*0.6+fres*0.12;
-          wcol=mix(wcol,vec3(0.93,0.95,0.96),foam*0.55);
+          vec3 wcol=wr*vec3(0.97,0.99,1.02)*1.01+vec3(0.012,0.016,0.02)+stk*vec3(0.9,0.94,1.0)*0.06*smoothstep(0.2,0.8,th)+spec*0.6+fres*0.12;
+          wcol=mix(wcol,vec3(0.93,0.95,0.96),foam*0.18);
           col=mix(col,wcol,wf);
-          a=mix(a,smoothstep(0.02,0.6,th)*mix(0.75,0.9,foam),wf);
+          a=mix(a,smoothstep(0.01,0.22,th)*0.82,wf);
         }
         gl_FragColor=vec4(mix(base,col,a),1.);
       }`, depthTest: false, depthWrite: false });

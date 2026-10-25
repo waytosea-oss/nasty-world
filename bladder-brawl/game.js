@@ -4,7 +4,8 @@ const $=id=>document.getElementById(id);
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 let rnd=Math.random;const rand=(a,b)=>a+rnd()*(b-a);
 const Q=new URLSearchParams(location.search);
-const SIMMODE=Q.has('sim');const DBG={dmg:0,fireT:0,ft:0};const V6=Q.get('frame')!=='v5';
+const SIMMODE=Q.has('sim');/* v6.1 difficulty (BALANCE.md v6.1): extra HP ramp (+HPA flat, +HPB at L18), speed ramp, boss HP, HPFIN = final-boss level (fewer coins reach L18 now); flush washes only bugs already below FLW of max HP (others take FLW·maxHp) */
+const HPA=+(Q.get('hpa')??0),HPB=+(Q.get('hpb')??.25),SPB=+(Q.get('spb')??0),HPBOSS=+(Q.get('hpboss')??1),HPFIN=+(Q.get('hpfin')??.92),FLW=+(Q.get('flw')??.6);const DBG={dmg:0,fireT:0,ft:0};const V6=Q.get('frame')!=='v5';
 let FX=null;/* v6 fluid module (fluid.js) once ready; null = v5g 2D stream fallback */
 const W=400;let H=800,SC=1,DPR=1,QMAX=Math.min(2,+(new URLSearchParams(location.search).get('dpr'))||(()=>{try{return +localStorage.nwQ}catch(e){}})()||2);const L={};
 const cv=$('cv'),cx=cv.getContext('2d',{willReadFrequently:new URLSearchParams(location.search).get('wrf')==='1'});
@@ -44,7 +45,7 @@ function levelDef(Lv){
   const ch=Math.ceil(Lv/6)-1,boss=BOSS[Lv],pool=POOLS[Lv];
   const T=window.TUNE||{n:1.8,hp:.17,sp:.045,gap:.13};
   const n=boss?Math.round(6+Lv*T.n*.6):Math.round(8+Lv*T.n);
-  const dm=(window.DM||DMT)[Lv-1];const hpM=(1+T.hp*(Lv-1))*dm,spM=1+T.sp*(Lv-1);
+  const dm=(window.DM||DMT)[Lv-1];const hpM=(1+T.hp*(Lv-1))*dm*(boss?(Lv===18?HPFIN:HPBOSS):1+HPA+HPB*(Lv-1)/17),spM=(1+T.sp*(Lv-1))*(1+SPB*(Lv-1)/17);
   const q=[];let t=1.2;let r=(Lv*9301+49297)%233280;const R=()=>(r=(r*9301+49297)%233280)/233280;
   if(boss)q.push({t:3,type:boss});
   let left=n;while(left>0){const ty=pool[Math.floor(R()*pool.length)];const g=Math.min(left,ty==='ant'||ty==='baby'?3+Math.floor(R()*3):1+Math.floor(R()*(Lv<3?2:3)));
@@ -228,7 +229,7 @@ function update(dt){
   else{const p=G.power;p.t+=dt;if(!p.got){p.y+=dt*30*L.K;p.x+=Math.sin(p.t*1.6)*dt*30*L.K;if(p.y>L.waterY-10)G.power=null;}else if(p.t>.8)G.power=null;}
   if(G.flushFx){const f=G.flushFx;f.t+=dt;if(FX&&!f.fx&&f.t>=FL.w0-.06){f.fx=1;FX.flush();}f.front=f.t>FL.w0?flushFront(L.cx,f.t):null;
     if(f.t>FL.w0&&f.t<FW.tt1){const fy=flFront(f.t),ty=flTop(f.t);for(const b of G.bugs){if(b.dead||b.esc!=null)continue;const T=BT[b.type];
-      if(b.y<fy+T.r*.6&&b.y>ty-T.r){if(T.boss){if(b.fl!==f.id){b.fl=f.id;damage(b,b.maxHp*.12,0);b.kbV=300*L.K;}}else{kill(b,true);b.vx=(L.drainX-b.x)*1.6;b.vy=Math.max(160,(L.waterY-b.y)*1.8);}}}
+      if(b.y<fy+T.r*.6&&b.y>ty-T.r){if(T.boss){if(b.fl!==f.id){b.fl=f.id;damage(b,b.maxHp*.12,0);b.kbV=300*L.K;}}else if(b.fl!==f.id){b.fl=f.id;if(b.hp<=b.maxHp*FLW){kill(b,true);b.vx=(L.drainX-b.x)*1.6;b.vy=Math.max(160,(L.waterY-b.y)*1.8);}else{damage(b,b.maxHp*FLW,0);b.kbV=260*L.K;}}}}
       for(const st of G.stains)if(st.y<fy)st.a=Math.min(st.a,.15);if(G.wet)for(const w of G.wet)if(w.y<fy)w.a*=.85;}
     if(f.t>FW.end)G.flushFx=null;}
   updFans(dt);updCall(dt);
@@ -245,7 +246,7 @@ function fxPoints(st){const o={x:L.cx+clamp((G.aim.x-L.cx)*.06,-10,10),y:L.bowlB
   const offs=st.streams===1?[0]:st.streams===2?[-.1,.1]:[0,-.17,.17];return offs.map(off=>{const dd=d*(off?.97:1);return {x:o.x+Math.cos(a0+off)*dd,y:o.y+Math.sin(a0+off)*dd,w:off?.62:1};});}
 function fxUpdate(dt,st){const pts=fxPoints(st);G.fxAim=pts[0];
   FX.aim(pts.map(p=>({x:p.x*SC,y:p.y*SC,w:p.w})));FX.flow(G.firing,G.super>0?1.3:1,G.super>0,S.up.wid);
-  if(G.firing&&!SIMMODE){streamSnd(1,2300+S.up.pres*300+(G.super>0?700:0));G.emit+=dt*72;while(G.emit>=1){G.emit-=1;for(const p of pts){const d={x:p.x,y:p.y,tx:p.x,ty:p.y,ox:L.cx,oy:-40,sid:0,dmg:0,kb:0,rad:0};if(SCN.impact(d))continue;if(rnd()<.03){G.stains.push({x:p.x+rand(-8,8),y:p.y+rand(-6,6),r:rand(6,14),a:.25});if(G.stains.length>60)G.stains.shift();}}}}
+  if(G.firing&&!SIMMODE){streamSnd(1,2300+S.up.pres*300+(G.super>0?700:0));G.emit+=dt*72;while(G.emit>=1){G.emit-=1;for(const p of pts){const d={x:p.x,y:p.y,tx:p.x,ty:p.y,ox:L.cx,oy:-40,sid:0,dmg:0,kb:0,rad:0};if(SCN.impact(d))continue;/* v6.1: ambient wall trickles + spray specks restored (v5g impact()) */if(p.y>=L.rimY-16)SCN.splash(p.x,p.y,1);else if(rnd()<.3)G.parts.push({k:'drop',x:p.x,y:p.y,vx:rand(-60,60),vy:rand(-60,30),t:0,life:.5,r:2,col:'#ffe56b'});if(rnd()<.06){G.stains.push({x:p.x+rand(-8,8),y:p.y+rand(-6,6),r:rand(6,14),a:.25});if(G.stains.length>60)G.stains.shift();}}}}
   const tl=[],tb=[];for(const b of G.bugs){if(b.dead||b.esc!=null||b.spawnT<.1)continue;tl.push({x:b.x*SC,y:b.y*SC,r:(BT[b.type].r+st.rad*L.K*.5)*SC});tb.push(b);}
   if(G.power&&!G.power.got){tl.push({x:G.power.x*SC,y:G.power.y*SC,r:18*SC});tb.push(G.power);}
   FX.targets(tl);FX.step(dt);const h=FX.hits();const k=st.dps*FXK/(h.rate*1.3*.6),kbk=6*st.kb/st.dps*FXKB;
@@ -312,7 +313,7 @@ function updBug(b,dt){const T=BT[b.type];b.t+=dt;b.spawnT+=dt;b.sqT+=dt;if(b.hit
   b.look=[clamp((G.aim.x-b.x)/120,-1,1),clamp((G.aim.y-b.y)/120,-1,1)];
   if(b.y<L.rimY+(T.boss?30:4))b.esc=0;return false;}
 /* ---------------- render ---------------- */
-function render(){let c=cx;c.setTransform(DPR*SC,0,0,DPR*SC,0,0);
+function render(){let c=cx;SCN.phFront=!!FX;c.setTransform(DPR*SC,0,0,DPR*SC,0,0);
   if(G.state==='title'||!def){c.fillStyle='#1d1530';c.fillRect(0,0,W,H);return;}
   c.save();if(G.shake>0&&!FX){const s=G.shake*G.shake*9;c.translate(rand(-s,s),rand(-s,s));}
   c.drawImage(bgC,0,0,W,H);
