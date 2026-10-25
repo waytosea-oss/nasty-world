@@ -95,3 +95,8 @@ Compared with v4:
 
 ## v5e
 - Painted assets: toe5 (sneaker toe boxes), stream5 (liquid strip, UV-scrolled, sheared straight from top edge to impact), fan5 (4-variant splash sheet, rotated to wash dir), flush sheets textured with desaturated stream5. Visual only; damage/balance unchanged.
+
+## v5f
+- Stream: continuous glassy column (gradient body, twisting edge highlights, scrolled texture ripples), drawn behind rim props above the bowl top.
+- Impact: crown sprite at apex + translucent sheet flowing downhill + rivulets to drain + multiply wet decal. Damage zones unchanged.
+- Toe caps: per-foot painted front-facing toe boxes (toeL5/toeR5), darker in lip shadow. Phone lies flat on the top deck; can + phone reseated on the deck with contact shadows. Visual only.
