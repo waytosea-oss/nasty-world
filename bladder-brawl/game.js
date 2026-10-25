@@ -5,7 +5,14 @@ const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 let rnd=Math.random;const rand=(a,b)=>a+rnd()*(b-a);
 const Q=new URLSearchParams(location.search);
 const SIMMODE=Q.has('sim');/* v6.1 difficulty (BALANCE.md v6.1): extra HP ramp (+HPA flat, +HPB at L18), speed ramp, boss HP, HPFIN = final-boss level (fewer coins reach L18 now); flush washes only bugs already below FLW of max HP (others take FLW·maxHp) */
-const HPA=+(Q.get('hpa')??0),HPB=+(Q.get('hpb')??.25),SPB=+(Q.get('spb')??0),HPBOSS=+(Q.get('hpboss')??1),HPFIN=+(Q.get('hpfin')??.92),FLW=+(Q.get('flw')??.6);const DBG={dmg:0,fireT:0,ft:0};const V6=Q.get('frame')!=='v5';
+/* v6.2 difficulty tiers (BALANCE.md v6.2). EASY = v6.1. Every field can be overridden with ?d_<key>= for sim tuning */
+const DIFFS={
+ easy:  {hpa:0,  hpb:.25,spb:0,  fspb:0,  n:1,   gap:1,  cap:1,  ref:1,  fl:0, flw:.6, dmg:1,  boss:1,  fin:.92,coin:1},
+ normal:{hpa:.1, hpb:.45,spb:.08,fspb:.08,n:1.1, gap:.9, cap:.9, ref:.88,fl:0, flw:.5, dmg:1,  boss:1.1,fin:.85,coin:1},
+ hard:  {hpa:.3, hpb:.65,spb:.16,fspb:0,  n:1.25,gap:.8, cap:.85,ref:.75,fl:0, flw:.35,dmg:.85,boss:1.3,fin:.68,coin:.75}};
+const DIFFL={easy:['PEE-WEE','Easy'],normal:['REGULAR','Normal'],hard:['IRON BLADDER','Hard']};
+let DIFF='normal',D=null;function setDiffVals(k){DIFF=DIFFS[k]?k:'normal';D=Object.assign({},DIFFS[DIFF]);for(const key in D){const v=Q.get('d_'+key);if(v!=null)D[key]=+v;}}
+setDiffVals(Q.get('diff')||'normal');const DBG={dmg:0,fireT:0,ft:0};const V6=Q.get('frame')!=='v5';
 let FX=null;/* v6 fluid module (fluid.js) once ready; null = v5g 2D stream fallback */
 const W=400;let H=800,SC=1,DPR=1,QMAX=Math.min(2,+(new URLSearchParams(location.search).get('dpr'))||(()=>{try{return +localStorage.nwQ}catch(e){}})()||2);const L={};
 const cv=$('cv'),cx=cv.getContext('2d',{willReadFrequently:new URLSearchParams(location.search).get('wrf')==='1'});
@@ -14,7 +21,11 @@ const FONT='"Lilita One","Fredoka",system-ui,sans-serif';
 const SKEY='bladderbrawl_v1';
 const S=Object.assign({unl:1,stars:[],coins:0,up:{pres:0,wid:0,rng:0,cap:0,spr:0,flush:0},mus:1,sfx:1,vib:1,tip:0,aim:'relative'},(()=>{try{return JSON.parse(localStorage.getItem(SKEY))||{}}catch(e){return {}}})());
 S.up=Object.assign({pres:0,wid:0,rng:0,cap:0,spr:0,flush:0},S.up);
-function save(){if(SIMMODE)return;try{localStorage.setItem(SKEY,JSON.stringify(S))}catch(e){}}
+/* v6.2: stars + unlock progress kept per difficulty; coins/upgrades shared. Old saves (v6.1 balance) land in EASY */
+if(!S.sd){S.sd={easy:S.stars||[],normal:[],hard:[]};S.ud={easy:S.unl||1,normal:1,hard:1};}
+function applyDiff(k){if(!DIFFS[k])k='normal';if(S.sd[S.diff||'normal'])S.ud[S.diff||'normal']=S.unl;S.diff=k;S.stars=S.sd[k];S.unl=S.ud[k]||1;setDiffVals(Q.get('diff')||k);}
+if(!SIMMODE){S.diff=S.diff||'normal';applyDiff(S.diff);}
+function save(){if(SIMMODE)return;S.ud[S.diff]=S.unl;S.sd[S.diff]=S.stars;try{localStorage.setItem(SKEY,JSON.stringify(S))}catch(e){}}
 /* ---------------- content ---------------- */
 const BT={
  mosq:{name:'Skeeter',r:13,hp:2.2,spd:44,pts:6,res:0},
@@ -44,13 +55,13 @@ const DMT=[1,1,1,1.05,1,0.7,1.1,1.1,0.8,0.75,0.8,0.75,0.95,0.85,0.65,1.05,1.05,0
 function levelDef(Lv){
   const ch=Math.ceil(Lv/6)-1,boss=BOSS[Lv],pool=POOLS[Lv];
   const T=window.TUNE||{n:1.8,hp:.17,sp:.045,gap:.13};
-  const n=boss?Math.round(6+Lv*T.n*.6):Math.round(8+Lv*T.n);
-  const dm=(window.DM||DMT)[Lv-1];const hpM=(1+T.hp*(Lv-1))*dm*(boss?(Lv===18?HPFIN:HPBOSS):1+HPA+HPB*(Lv-1)/17),spM=(1+T.sp*(Lv-1))*(1+SPB*(Lv-1)/17);
+  const n=Math.round((boss?6+Lv*T.n*.6:8+Lv*T.n)*D.n);
+  const dm=(window.DM||DMT)[Lv-1];const hpM=(1+T.hp*(Lv-1))*dm*(boss?(Lv===18?D.fin:D.boss):1+D.hpa+D.hpb*(Lv-1)/17),spM=(1+T.sp*(Lv-1))*(1+(Lv===18?D.fspb:D.spb)*(Lv-1)/17);
   const q=[];let t=1.2;let r=(Lv*9301+49297)%233280;const R=()=>(r=(r*9301+49297)%233280)/233280;
   if(boss)q.push({t:3,type:boss});
   let left=n;while(left>0){const ty=pool[Math.floor(R()*pool.length)];const g=Math.min(left,ty==='ant'||ty==='baby'?3+Math.floor(R()*3):1+Math.floor(R()*(Lv<3?2:3)));
     const gx=60+R()*280;for(let i=0;i<g;i++)q.push({t:t+i*(ty==='ant'?.45:.7),type:ty,gx,line:ty==='ant'});
-    left-=g;t+=Math.max(1.1,(Lv<3?4.2:3.6)-Lv*(window.TUNE||{gap:.13}).gap)+g*.45+(boss?2.2:0);}
+    left-=g;t+=D.gap*Math.max(1.1,(Lv<3?4.2:3.6)-Lv*(window.TUNE||{gap:.13}).gap)+g*.45+(boss?2.2:0);}
   q.sort((a,b)=>a.t-b.t);return {ch,boss,q,hpM,spM,n:q.length};
 }
 const UPG=[
@@ -156,10 +167,10 @@ function buildBg(ch){const k=ch+'|'+H+'|'+DPR;if(k===bgKey)return;bgKey=k;bgC.wi
 /* ---------------- state ---------------- */
 const G={state:'title',paused:false,t:0,bugs:[],drops:[],parts:[],pops:[],stains:[]};
 let curL=1,def=null;
-function stats(){const u=S.up;const o={dps:7*(1+.42*u.pres),rad:17+6*u.wid,kb:60*(1+.28*u.pres),range:L.wallH*(.78+.12*u.rng)+(L.oy-L.bowlBot),cap:100*(1+.35*u.cap),refill:16*(1+.3*u.cap),streams:1+u.spr,w:6+1.6*u.wid+.5*u.pres};
+function stats(){const u=S.up;const o={dps:7*(1+.42*u.pres)*D.dmg,rad:17+6*u.wid,kb:60*(1+.28*u.pres),range:L.wallH*(.78+.12*u.rng)+(L.oy-L.bowlBot),cap:100*(1+.35*u.cap)*D.cap,refill:16*(1+.3*u.cap)*D.ref,streams:1+u.spr,w:6+1.6*u.wid+.5*u.pres};
   if(G.super>0){o.dps*=1.8;o.rad*=1.3;o.kb*=1.4;o.w*=1.35;o.range*=1.15;}return o;}
 function startLevel(Lv){curL=Lv;def=levelDef(Lv);
-  Object.assign(G,{state:'play',paused:false,t:0,bugs:[],drops:[],parts:[],pops:[],stains:[],queue:def.q.slice(),wt:0,lives:5,lost:0,kills:0,earned:0,flushes:2+S.up.flush,flushFx:null,
+  Object.assign(G,{state:'play',paused:false,t:0,bugs:[],drops:[],parts:[],pops:[],stains:[],queue:def.q.slice(),wt:0,lives:5,lost:0,kills:0,earned:0,flushes:Math.max(1,2+S.up.flush+D.fl),flushFx:null,
    bladder:100,dry:false,super:0,combo:0,comboT:0,shake:0,hitstop:0,aim:{x:200,y:L.rimY+L.wallH*.5},f:{x:200,y:400,down:false,id:null,touch:false},firing:false,seq:0,emit:0,power:null,powerT:14,boss:null,clearT:-1,bounce:0,dangerT:0,fans:[],ashT:0,canFx:null,callable:false,calls:0});
   G.bladder=stats().cap;G.aimInit=false;buildBg(def.ch);if(!SIMMODE)SCN.reset();if(FX)FX.clear();
   if(!SIMMODE){try{}catch(e){}hudInit();const b=INTRO[Lv];banner('Level '+Lv,b||CH[def.ch].n,def.boss?'boss':'');if(S.mus)bgmStart();}
@@ -229,7 +240,7 @@ function update(dt){
   else{const p=G.power;p.t+=dt;if(!p.got){p.y+=dt*30*L.K;p.x+=Math.sin(p.t*1.6)*dt*30*L.K;if(p.y>L.waterY-10)G.power=null;}else if(p.t>.8)G.power=null;}
   if(G.flushFx){const f=G.flushFx;f.t+=dt;if(FX&&!f.fx&&f.t>=FL.w0-.06){f.fx=1;FX.flush();}f.front=f.t>FL.w0?flushFront(L.cx,f.t):null;
     if(f.t>FL.w0&&f.t<FW.tt1){const fy=flFront(f.t),ty=flTop(f.t);for(const b of G.bugs){if(b.dead||b.esc!=null)continue;const T=BT[b.type];
-      if(b.y<fy+T.r*.6&&b.y>ty-T.r){if(T.boss){if(b.fl!==f.id){b.fl=f.id;damage(b,b.maxHp*.12,0);b.kbV=300*L.K;}}else if(b.fl!==f.id){b.fl=f.id;if(b.hp<=b.maxHp*FLW){kill(b,true);b.vx=(L.drainX-b.x)*1.6;b.vy=Math.max(160,(L.waterY-b.y)*1.8);}else{damage(b,b.maxHp*FLW,0);b.kbV=260*L.K;}}}}
+      if(b.y<fy+T.r*.6&&b.y>ty-T.r){if(T.boss){if(b.fl!==f.id){b.fl=f.id;damage(b,b.maxHp*.12,0);b.kbV=300*L.K;}}else if(b.fl!==f.id){b.fl=f.id;if(b.hp<=b.maxHp*D.flw){kill(b,true);b.vx=(L.drainX-b.x)*1.6;b.vy=Math.max(160,(L.waterY-b.y)*1.8);}else{damage(b,b.maxHp*D.flw,0);b.kbV=260*L.K;}}}}
       for(const st of G.stains)if(st.y<fy)st.a=Math.min(st.a,.15);if(G.wet)for(const w of G.wet)if(w.y<fy)w.a*=.85;}
     if(f.t>FW.end)G.flushFx=null;}
   updFans(dt);updCall(dt);
@@ -465,7 +476,7 @@ function drawFlush(c){const f=G.flushFx;if(!f||f.t<FL.w0-.12)return;const t=f.t,
 
 /* ---------------- HUD / UI ---------------- */
 let hudLast={};
-function hudInit(){$('hud').classList.add('on');$('bossbar').classList.remove('on');$('hLvl').textContent='Level '+curL;hudLast={};hudHearts();hudFlush();}
+function hudInit(){$('hud').classList.add('on');$('bossbar').classList.remove('on');$('hLvl').textContent='Level '+curL+' \u00B7 '+DIFFL[DIFF][1];hudLast={};hudHearts();hudFlush();}
 function hudHearts(anim){const h=$('hHearts');let s='';for(let i=0;i<5;i++)s+=`<i class="${i<G.lives?'':'off'}${anim&&i===G.lives?' pop':''}">\u2665</i>`;h.innerHTML=s;}
 function hudFlush(){$('fCnt').textContent=G.flushes;$('bFlush').classList.toggle('off',G.flushes<=0);}
 function hudTick(){if(G.state!=='play')return;const st=stats();const tot=def.n,done=tot-G.queue.length-G.bugs.filter(b=>!b.dead).length;const pr=Math.round(clamp(done/tot,0,1)*100);
@@ -494,9 +505,9 @@ function renderShop(){const box=$('ups');box.innerHTML='';for(const u of UPG){co
   b.onclick=()=>{if(mx)return;if(S.coins<c){SFX.deny();toast('Not enough coins. Go splash more bugs!');return;}S.coins-=c;S.up[u.k]++;save();SFX.coin();vib(20);renderShop();};d.appendChild(b);box.appendChild(d);}refreshCoins();}
 let shopNext=0;
 function go(Lv){showScr('none');auInit();startLevel(Lv);if(!S.tip&&Lv===1){G.paused=true;showScr('tip');}}
-function pauseG(){if(G.state!=='play'||G.paused)return;G.paused=true;G.f.down=false;streamSnd(0);bgmStop();$('pSub').textContent='Level '+curL+' \u00B7 '+CH[def.ch].n;showScr('pause');}
+function pauseG(){if(G.state!=='play'||G.paused)return;G.paused=true;G.f.down=false;streamSnd(0);bgmStop();$('pSub').textContent='Level '+curL+' \u00B7 '+CH[def.ch].n+' \u00B7 '+DIFFL[DIFF][1];showScr('pause');}
 function resumeG(){G.paused=false;showScr('none');if(S.mus)bgmStart();SFX.click();}
-function endLevel(win){G.state='end';if(!SIMMODE)SCN.ev(win?'win':'lose');G.f.down=false;if(!SIMMODE){streamSnd(0);bgmStop();$('hud').classList.remove('on');}
+function endLevel(win){G.state='end';G.earned=Math.round(G.earned*D.coin);if(!SIMMODE)SCN.ev(win?'win':'lose');G.f.down=false;if(!SIMMODE){streamSnd(0);bgmStop();$('hud').classList.remove('on');}
   const stars=G.lost===0?3:G.lost<=2?2:1;G.result={win,stars,earned:G.earned,lost:G.lost};if(SIMMODE)return;
   if(win){const bonus=20+curL*8+stars*10;S.coins+=G.earned+bonus;S.stars[curL]=Math.max(S.stars[curL]||0,stars);if(curL>=S.unl&&curL<NL)S.unl=curL+1;save();SFX.win();vib([30,40,30]);
     if(curL===NL){$('endStars').textContent=S.stars.slice(1).reduce((a,b)=>a+(b||0),0)+' / '+NL*3;showScr('ending');return;}
@@ -520,6 +531,7 @@ cv.addEventListener('pointermove',e=>{if(G.f.id!==e.pointerId)return;const p=toL
   if(aimMode==='relative')setAimT(G.f.x+(p.x-lastPX)*GAIN,G.f.y+(p.y-lastPY)*GAIN);else if(aimMode==='offset')setAimT(p.x,p.y-OFFY/SC);else setAimT(p.x,p.y);lastPX=p.x;lastPY=p.y;});
 const up=e=>{if(G.f.id!==e.pointerId)return;G.f.down=false;G.f.id=null;};cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);cv.addEventListener('lostpointercapture',up);
 document.addEventListener('touchend',e=>{if(!e.touches.length&&G.f.id!=null){G.f.down=false;G.f.id=null;}});
+function setDiff(k,restart){if(!DIFFS[k])return;applyDiff(k);save();document.querySelectorAll('.dsel button').forEach(b=>b.classList.toggle('on',b.dataset.diff===DIFF));if(restart&&G.state==='play'){go(Math.min(curL,S.unl));}}
 function setAimMode(m){if(!AIMM.includes(m))return;aimMode=m;S.aim=m;save();document.querySelectorAll('.aimsel button').forEach(b=>b.classList.toggle('on',b.dataset.aim===m));}
 document.addEventListener('touchmove',e=>{if(e.target.closest&&e.target.closest('.scroll'))return;e.preventDefault();},{passive:false});
 document.addEventListener('gesturestart',e=>e.preventDefault());document.addEventListener('contextmenu',e=>e.preventDefault());
@@ -541,7 +553,7 @@ function wire(){const on=(id,f)=>{const e=$(id);if(e)e.addEventListener('click',
   on('bEndOk',()=>{SFX.click();renderLevels();showScr('levels');});
   ['bHub0','bHubP','bHubW','bHubL','bHubE'].forEach(id=>on(id,goHub));
   document.querySelectorAll('.t-mus').forEach(b=>b.addEventListener('click',()=>tog('mus')));document.querySelectorAll('.t-sfx').forEach(b=>b.addEventListener('click',()=>tog('sfx')));document.querySelectorAll('.t-vib').forEach(b=>b.addEventListener('click',()=>tog('vib')));
-  document.querySelectorAll('.aimsel button').forEach(b=>b.addEventListener('click',()=>{SFX.click();setAimMode(b.dataset.aim);}));setAimMode(aimMode);
+  document.querySelectorAll('.aimsel button').forEach(b=>b.addEventListener('click',()=>{SFX.click();setAimMode(b.dataset.aim);}));setAimMode(aimMode);document.querySelectorAll('.dsel button').forEach(b=>b.addEventListener('click',()=>{SFX.click();setDiff(b.dataset.diff,!!b.closest('#pause'));}));setDiff(DIFF);
   togs();}
 let shopFrom='title';
 /* ---------------- loop ---------------- */
