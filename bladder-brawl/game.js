@@ -8,9 +8,9 @@ const SIMMODE=Q.has('sim');/* v6.1 difficulty (BALANCE.md v6.1): extra HP ramp (
 /* v6.2 difficulty tiers (BALANCE.md v6.2). EASY = v6.1. Every field can be overridden with ?d_<key>= for sim tuning */
 /* v7 (BALANCE.md v7): old IRON BLADDER ~ new REGULAR. New knobs: lives, drain (tank use/s mult), dryR (tank % before the stream comes back), sp (all bug speed), atk (spit/heal/boss attack rate), mx (max streak multiplier), gk (gunk seconds) */
 const DIFFS={
- easy:  {hpa:.1, hpb:.45,spb:.08,fspb:.08,n:1.1, gap:.9, cap:.9, ref:.88,fl:0, flw:.5, dmg:1,  boss:1.1,fin:.85,coin:1,  lives:5,drain:1,  dryR:.3, sp:1,   atk:.8, mx:4,gk:2.6},
- normal:{hpa:.3, hpb:.65,spb:.16,fspb:.08,n:1.25,gap:.8, cap:.85,ref:.75,fl:0, flw:.35,dmg:.85,boss:1.3,fin:.75,coin:.9, lives:4,drain:1.15,dryR:.4, sp:1.08,atk:1,  mx:5,gk:3.2},
- hard:  {hpa:.5, hpb:.9, spb:.25,fspb:.1, n:1.4, gap:.7, cap:.75,ref:.62,fl:-1,flw:.25,dmg:.75,boss:1.5,fin:.8, coin:.75,lives:3,drain:1.3, dryR:.5, sp:1.16,atk:1.3,mx:6,gk:3.8}};
+ easy:  {hpa:.5, hpb:.65,spb:.08,fspb:.08,n:1.1, gap:.9, cap:.9, ref:.88,fl:0, flw:.5, dmg:.8 ,  boss:1.1,fin:.85,coin:1,  lives:4,drain:1,  dryR:.3, sp:1,   atk:.8, mx:4,gk:2.6},
+ normal:{hpa:.5, hpb:.7, spb:.16,fspb:.08,n:1.25,gap:.8, cap:.85,ref:.75,fl:0, flw:.35,dmg:.77,boss:1.3,fin:.75,coin:.9, lives:4,drain:1.15,dryR:.4, sp:1.08,atk:1,  mx:5,gk:3.2},
+ hard:  {hpa:.4, hpb:.75,spb:.2, fspb:.1, n:1.35,gap:.72,cap:.78,ref:.65,fl:-1,flw:.25,dmg:.82,boss:1.4,fin:.72, coin:.75,lives:3,drain:1.3, dryR:.5, sp:1.16,atk:1.3,mx:6,gk:3.8}};
 const DIFFL={easy:['PEE-WEE','Easy'],normal:['REGULAR','Normal'],hard:['IRON BLADDER','Hard']};
 let DIFF='normal',D=null;function setDiffVals(k){DIFF=DIFFS[k]?k:'normal';D=Object.assign({},DIFFS[DIFF]);for(const key in D){const v=Q.get('d_'+key);if(v!=null)D[key]=+v;}}
 setDiffVals(Q.get('diff')||'normal');const DBG={dmg:0,fireT:0,ft:0};const V6=Q.get('frame')!=='v5';
@@ -68,7 +68,7 @@ const CARDS={gnat:['Gnat Swarm','Tiny, fast, a whole cloud of them. Sweep!'],blo
 const BOSS={6:'bfly',12:'bsnail',18:'bspider'};
 const INTRO={1:'Hold and drag to aim. Hose those bugs back down!',2:'Flies stop and go. Gnats come in clouds.',3:'Maggots wriggle in lines. Blobs split!',4:'Roaches are fast. Dodgy ones skitter.',
  5:'Rim Runners sprint. Keep your streak!',6:'Boss! Baron Blowfly gets angrier as he weakens.',7:'Snails hide. Beetles wear helmets.',8:'Gob Flies spit on your screen.',9:'Lights out!',10:'Nurse Snails heal the mob.',11:'Soap spill. Everything slides.',12:'Boss! General Goo has three moods.',13:'Bugs hiding under butts.',14:'Fast forward!',15:'Dark again. Gross again.',16:'Butt bunkers, round two.',17:'Everything. Fast. Slippery.',18:'Final boss! Mama Legs and ALL her kids.'};
-const DMT=[1,1,1,1.05,1,0.7,1.1,1.1,0.8,0.75,0.8,0.75,0.95,0.85,0.65,1.05,1.05,0.55];
+const DMT=[1,1,1.2,.9,.9,0.7,1.6,1.05,0.5,0.9,1.1,1,1.25,0.55,0.45,0.9,0.62,0.55];/* v7 per-level HP shape (flattens the new-bug walls) */
 function levelDef(Lv){
   const ch=Math.ceil(Lv/6)-1,boss=BOSS[Lv],pool=POOLS[Lv];
   const T=window.TUNE||{n:1.8,hp:.17,sp:.045,gap:.13};
@@ -238,14 +238,14 @@ function botStep(dt,st){const sk=BOT.skill;BOT.lag-=dt;BOT.react-=dt;
     for(const b of G.bugs){if(b.dead||b.esc!=null||b.spawnT<.25)continue;const ty=b.type;let sc=b.y-(BT[ty].boss?120:0)+rand(0,(1-sk)*170)*botVis(b.x,b.y);
       if(ty==='healer'||ty==='spitter')sc-=90*sk;if(ty==='climber')sc-=50*sk;if(b===BOT.tgt)sc-=30;if(sc<best){best=sc;tgt=b;}}
     const pk=G.picks.find(p=>!p.got);if(pk&&rnd()<sk*.35)tgt=pk;else if(G.power&&!G.power.got&&rnd()<sk*.4)tgt=G.power;
-    if(tgt!==BOT.tgt){BOT.tgt=tgt;BOT.react=(.2+(1-sk)*.4)*(tgt?botVis(tgt.x,tgt.y):1);BOT.side=tgt&&tgt.cap&&rnd()<sk*1.1?(rnd()<.5?-1:1):0;}
+    if(tgt!==BOT.tgt){BOT.tgt=tgt;BOT.react=(.2+(1-sk)*.35)*(tgt?botVis(tgt.x,tgt.y):1);BOT.side=tgt&&tgt.cap&&rnd()<sk*1.1?(rnd()<.5?-1:1):0;}
     if(tgt){BOT.px=tgt.x;BOT.py=tgt.y-(tgt.type&&BT[tgt.type].boss?10:0);}
     if(G.callable&&!window.NOCALL&&rnd()<sk*.5)callWave();
     if(G.flushes>0&&!G.flushFx){let n=0,cap=0;for(const b of G.bugs)if(!b.dead&&b.esc==null){if(b.y<L.rimY+L.wallH*.25)n++;if(b.cap||b.butt)cap++;}if(n>=(sk>.7?3:4)||(G.boss&&G.boss.y<L.rimY+L.wallH*.3)||(cap>=4&&sk>.5))doFlush();}}
-  const vis=botVis(BOT.ax,BOT.ay),amp=(5+(1-sk)*50)*vis;
+  const vis=botVis(BOT.ax,BOT.ay),amp=(8+(1-sk)*36)*vis;
   for(const k of ['nx','ny']){BOT[k]+=-BOT[k]*2.2*dt+rand(-1,1)*amp*3.2*Math.sqrt(dt);}
   const tg=BOT.tgt;if(tg&&BOT.react<=0){const r=tg.type?BT[tg.type].r:15;BOT.tx=BOT.px+BOT.side*r*.75+BOT.nx;BOT.ty=BOT.py+BOT.ny*.7;}
-  const dx=BOT.tx-BOT.ax,dy=BOT.ty-BOT.ay,d=Math.hypot(dx,dy),v=(300+700*sk)*(G.web>0?.45:1)*dt;if(d>v){BOT.ax+=dx/d*v;BOT.ay+=dy/d*v;}else{BOT.ax=BOT.tx;BOT.ay=BOT.ty;}
+  const dx=BOT.tx-BOT.ax,dy=BOT.ty-BOT.ay,d=Math.hypot(dx,dy),v=(350+600*sk)*(G.web>0?.45:1)*dt;if(d>v){BOT.ax+=dx/d*v;BOT.ay+=dy/d*v;}else{BOT.ax=BOT.tx;BOT.ay=BOT.ty;}
   let fire=!!tg&&!G.dry;if(fire&&sk>.5&&G.bladder<st.cap*.12&&!G.boss&&tg.y>L.rimY+L.wallH*.55)fire=false;/* tank management */
   BOT.fire=fire;G.f.down=fire;G.f.x=BOT.ax;G.f.y=BOT.ay;G.f.touch=false;}
 /* ---------------- update ---------------- */
