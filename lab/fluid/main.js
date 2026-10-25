@@ -466,13 +466,13 @@ function initGL() {
         vec3 ddx2= (dl>0.) ? p-vpos(vUv-vec2(texel.x,0.),dl) : ddx; if(abs(ddx2.z)<abs(ddx.z)) ddx=ddx2;
         vec3 ddy = (du>0.) ? vpos(vUv+vec2(0.,texel.y),du)-p : p-vpos(vUv-vec2(0.,texel.y),dd);
         vec3 ddy2= (dd>0.) ? p-vpos(vUv-vec2(0.,texel.y),dd) : ddy; if(abs(ddy2.z)<abs(ddy.z)) ddy=ddy2;
-        vec3 n=normalize(cross(ddx,ddy)); if(n.z<0.) n=-n; n=normalize(mix(n,vec3(0.,0.,1.),0.93*(1.-jf)));
+        vec3 n=normalize(cross(ddx,ddy)); if(n.z<0.) n=-n; n=normalize(mix(n,vec3(0.,0.,1.),0.82*(1.-jf)));
         vec3 v=normalize(-p);
         float t=clamp(th,0.,6.)*mix(0.4,1.,jf); t=min(t,0.9+1.5*jf);
         // refraction of the painted background through the liquid
-        vec2 ruv=vUv + n.xy*(0.004+0.0025*t)*vec2(1.,0.6);
+        vec2 ruv=vUv + n.xy*(0.004+0.0025*t+0.010*jf)*vec2(1.,0.6);
         vec3 refr=texture2D(bg,clamp(ruv,0.001,0.999)).rgb;
-        vec3 absorb=mix(vec3(0.03,0.015,0.008),vec3(0.004,0.014,0.07),pf);              // pale yellow tint grows with thickness
+        vec3 absorb=mix(vec3(0.03,0.015,0.008),vec3(0.008,0.04,0.22),pf);              // pale yellow tint grows with thickness
         vec3 trans=refr*exp(-absorb*t*0.9)*1.04 + vec3(0.012,0.010,0.0)*min(t,1.)*pf + vec3(0.02,0.03,0.04)*min(t,2.)*(1.-pf);
         float ndv=max(dot(n,v),0.); float fres=0.03+0.97*pow(1.-ndv,5.);
         vec3 L1=normalize(vec3(-0.4,0.8,0.6)), L2=normalize(vec3(0.6,0.3,0.7));
@@ -482,7 +482,12 @@ function initGL() {
         vec3 col=mix(trans,env,fres*0.85)+spec*vec3(1.,0.98,0.9)*(1.+jf);
         col += jf*vec3(1.,0.96,0.80)*0.28*smoothstep(0.55,1.0,ndv); // bright glassy core of the jet
         col += vec3(0.05,0.04,0.0)*smoothstep(0.4,0.0,ndv)*jf;
-        float a=mix(smoothstep(0.05,0.5,th),smoothstep(0.01,0.25,th),jf)*mix(mix(0.42,0.7,1.-pf),0.8,jf); col+=spec*vec3(1.,0.98,0.9)*0.6*(1.-jf);
+        // jet: lively clear amber - lighter core, darker amber rim, strong highlights
+        vec3 jt=mix(vec3(0.88,0.70,0.30),vec3(1.0,0.96,0.78),smoothstep(0.15,0.85,ndv));
+        vec3 jcol=refr*jt*1.04 + vec3(0.10,0.07,0.0)*smoothstep(0.5,1.,ndv) + spec*vec3(1.,0.98,0.9)*2.4
+                 + vec3(1.,0.95,0.75)*0.22*smoothstep(0.75,1.0,ndv) + env*fres*0.5;
+        col=mix(col,jcol,jf);
+        float a=mix(smoothstep(0.10,0.55,th),smoothstep(0.01,0.25,th),jf)*mix(mix(0.45,0.7,1.-pf),0.74,jf); col+=spec*vec3(1.,0.98,0.9)*0.6*(1.-jf);
         gl_FragColor=vec4(mix(base,col,a),1.);
       }`,
     depthTest: false, depthWrite: false,
@@ -552,7 +557,7 @@ function render() {
   const n = P.n, pos = pGeo.attributes.position.array, gen = pGeo.attributes.gen.array, szA = pGeo.attributes.sz.array;
   let m = 0, ms = 0; const spA = spGeo.attributes.position.array;
   for (let i = 0; i < n; i++) { if (!P.water[i] && P.gen[i] && P.vx[i] * P.vx[i] + P.vy[i] * P.vy[i] + P.vz[i] * P.vz[i] > 0.06) { if (visible(P.x[i], P.y[i], P.z[i])) { spA[ms * 3] = P.x[i]; spA[ms * 3 + 1] = P.y[i]; spA[ms * 3 + 2] = P.z[i]; ms++; } continue; }
-    if ((P.x[i] - CX) * FWD.x + (P.y[i] - CY) * FWD.y + (P.z[i] - CZ) * FWD.z < 0.13 || !visible(P.x[i], P.y[i], P.z[i])) continue; pos[m * 3] = P.x[i]; pos[m * 3 + 1] = P.y[i]; pos[m * 3 + 2] = P.z[i]; gen[m] = (P.gen[i] ? 1 : (P.touched[i] ? 0 : 2)) + (P.water[i] ? 4 : 0); szA[m] = (!P.water[i] && P.touched[i] && !P.gen[i]) ? Math.max(0.3, 1 - Math.max(0, P.age[i] - 0.7) / 1.9) : 1; m++;
+    if ((P.x[i] - CX) * FWD.x + (P.y[i] - CY) * FWD.y + (P.z[i] - CZ) * FWD.z < 0.13 || !visible(P.x[i], P.y[i], P.z[i])) continue; pos[m * 3] = P.x[i]; pos[m * 3 + 1] = P.y[i]; pos[m * 3 + 2] = P.z[i]; gen[m] = (P.gen[i] ? 1 : (P.touched[i] ? 0 : 2)) + (P.water[i] ? 4 : 0); szA[m] = (!P.water[i] && P.touched[i] && !P.gen[i]) ? Math.max(0.3, 1 - Math.max(0, P.age[i] - 0.7) / 1.9) * Math.min(1, 0.25 + P.rho[i] / RHO0 * 0.6) : 1; m++;
     if (!P.touched[i] && !P.water[i]) { // airborne jet: gap-fill splats back along the path -> continuous, organic column
       for (let k = 1; k <= 3; k++) { const f = k / 4 / 120; pos[m * 3] = P.x[i] - P.vx[i] * f; pos[m * 3 + 1] = P.y[i] - P.vy[i] * f; pos[m * 3 + 2] = P.z[i] - P.vz[i] * f; gen[m] = 2; szA[m] = 0.9 + 0.2 * Math.sin(i * 2.3 + k); m++; }
     } else if (P.touched[i] && m < MAXN * 4 - 2) { // landed liquid: extra small splats around each particle -> continuous fine film, no blobs
