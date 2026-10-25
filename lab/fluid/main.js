@@ -420,9 +420,9 @@ function initGL() {
   const pv = `uniform float uScale, uRad; attribute float gen; attribute float sz; varying float vZ; varying float vR; varying float vP; varying float vJ; varying float vT;
     void main(){ vec4 mv=modelViewMatrix*vec4(position,1.); float w=step(3.5,gen); float g=gen-4.*w; vP=1.-w; vJ=step(1.5,g)*step(2.5,-g+5.)*(1.-w)*step(g,2.5);
       // jet: thin, and narrower near the camera (top of screen); splash: fine droplets; film: thin; water sheet: wide
-      float jr = 0.62*clamp(-mv.z/0.75,0.45,1.0);
-      vR=uRad*sz*(g>1.5?jr:(g>0.5?0.42:(w<0.5?1.8:1.3)))*(1.+0.9*w);
-      vT=(g<0.5&&w<0.5)?0.22:1.0; gl_PointSize=max(1.5, vR*uScale/-mv.z); vZ=-mv.z; gl_Position=projectionMatrix*mv; }`;
+      float jr = 0.40*clamp(-mv.z/0.75,0.55,1.0);
+      vR=uRad*sz*(g>1.5?jr:(g>0.5?0.28:(w<0.5?0.95:0.85)))*(1.+0.9*w);
+      vT=(g<0.5&&w<0.5)?0.55:1.0; gl_PointSize=max(1.5, vR*uScale/-mv.z); vZ=-mv.z; gl_Position=projectionMatrix*mv; }`;
   const depthMat = new THREE.ShaderMaterial({
     uniforms: { uScale: { value: 1 }, uRad: { value: RAD } }, vertexShader: pv,
     fragmentShader: `varying float vZ; varying float vR; varying float vP; varying float vJ; varying float vT; void main(){ vec2 c=gl_PointCoord*2.-1.; c.y=-c.y; float r2=dot(c,c); if(r2>1.) discard; float nz=sqrt(1.-r2); gl_FragColor=vec4(vZ-nz*vR*(vT<0.9?0.04:(vP<0.5?0.3:1.)),0.,0.,1.); }`,
@@ -430,7 +430,7 @@ function initGL() {
   });
   const thickMat = new THREE.ShaderMaterial({
     uniforms: { uScale: { value: 1 }, uRad: { value: RAD } }, vertexShader: pv,
-    fragmentShader: `varying float vZ; varying float vR; varying float vP; varying float vJ; varying float vT; void main(){ vec2 c=gl_PointCoord*2.-1.; float r2=dot(c,c); if(r2>1.) discard; float nz=sqrt(1.-r2); float t=nz*vR*2.*100.*vT*(vJ>0.5?1.6:1.0); gl_FragColor=vec4(t,t*vP,t*vJ,1.); }`,
+    fragmentShader: `varying float vZ; varying float vR; varying float vP; varying float vJ; varying float vT; void main(){ vec2 c=gl_PointCoord*2.-1.; float r2=dot(c,c); if(r2>1.) discard; float nz=sqrt(1.-r2); float t=nz*vR*2.*100.*vT*(vJ>0.5?4.0:1.0); gl_FragColor=vec4(t,t*vP,t*vJ,1.); }`,
     depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending, transparent: true,
   });
   const blurDepth = new THREE.ShaderMaterial({
@@ -466,9 +466,9 @@ function initGL() {
         vec3 ddx2= (dl>0.) ? p-vpos(vUv-vec2(texel.x,0.),dl) : ddx; if(abs(ddx2.z)<abs(ddx.z)) ddx=ddx2;
         vec3 ddy = (du>0.) ? vpos(vUv+vec2(0.,texel.y),du)-p : p-vpos(vUv-vec2(0.,texel.y),dd);
         vec3 ddy2= (dd>0.) ? p-vpos(vUv-vec2(0.,texel.y),dd) : ddy; if(abs(ddy2.z)<abs(ddy.z)) ddy=ddy2;
-        vec3 n=normalize(cross(ddx,ddy)); if(n.z<0.) n=-n;
+        vec3 n=normalize(cross(ddx,ddy)); if(n.z<0.) n=-n; n=normalize(mix(n,vec3(0.,0.,1.),0.93*(1.-jf)));
         vec3 v=normalize(-p);
-        float t=clamp(th,0.,6.)*mix(0.4,1.,jf); t=min(t,0.9+4.7*jf);
+        float t=clamp(th,0.,6.)*mix(0.4,1.,jf); t=min(t,0.9+1.5*jf);
         // refraction of the painted background through the liquid
         vec2 ruv=vUv + n.xy*(0.004+0.0025*t)*vec2(1.,0.6);
         vec3 refr=texture2D(bg,clamp(ruv,0.001,0.999)).rgb;
@@ -481,8 +481,8 @@ function initGL() {
         vec3 r=reflect(-v,n); vec3 env=mix(refr*0.9+0.08,vec3(1.0,0.97,0.9),smoothstep(-0.1,0.9,r.y));
         vec3 col=mix(trans,env,fres*0.85)+spec*vec3(1.,0.98,0.9)*(1.+jf);
         col += jf*vec3(1.,0.96,0.80)*0.28*smoothstep(0.55,1.0,ndv); // bright glassy core of the jet
-        col += vec3(0.05,0.04,0.0)*smoothstep(0.4,0.0,ndv);
-        float a=smoothstep(0.05,0.5,th)*mix(mix(0.42,0.7,1.-pf),0.8,jf); col+=spec*vec3(1.,0.98,0.9)*0.6*(1.-jf);
+        col += vec3(0.05,0.04,0.0)*smoothstep(0.4,0.0,ndv)*jf;
+        float a=mix(smoothstep(0.05,0.5,th),smoothstep(0.01,0.25,th),jf)*mix(mix(0.42,0.7,1.-pf),0.8,jf); col+=spec*vec3(1.,0.98,0.9)*0.6*(1.-jf);
         gl_FragColor=vec4(mix(base,col,a),1.);
       }`,
     depthTest: false, depthWrite: false,
@@ -518,7 +518,7 @@ function drawBG(dt) {
   if (IMG.plate5c) c.drawImage(IMG.plate5c, PL.ox, PL.oy, PL.pw, PL.ph);
   // wet stain accumulating where the liquid ran
   stx.globalCompositeOperation = 'destination-out'; stx.fillStyle = `rgba(0,0,0,${Math.min(1, dt * (flushT > 0 ? 1.5 : 0.08))})`; stx.fillRect(0, 0, stain.width, stain.height);
-  stx.globalCompositeOperation = 'source-over'; stx.fillStyle = 'rgba(150,125,40,0.022)';
+  stx.globalCompositeOperation = 'source-over'; stx.fillStyle = 'rgba(150,128,50,0.012)';
   for (let i = 0; i < P.n; i += 3) { if (!P.wet[i] || P.water[i]) continue; V.set(P.x[i], P.y[i], P.z[i]).project(cam); const x = (V.x + 1) / 4 * W, y = (1 - V.y) / 4 * H; stx.fillRect(x - 1.5, y - 1.5, 3, 3); }
   c.drawImage(stain, 0, 0, W, H);
   // bugs
@@ -551,11 +551,16 @@ let showMesh = !!Q.get('mesh');
 function render() {
   const n = P.n, pos = pGeo.attributes.position.array, gen = pGeo.attributes.gen.array, szA = pGeo.attributes.sz.array;
   let m = 0, ms = 0; const spA = spGeo.attributes.position.array;
-  for (let i = 0; i < n; i++) { if (!P.water[i] && P.gen[i] && P.vx[i] * P.vx[i] + P.vy[i] * P.vy[i] + P.vz[i] * P.vz[i] > 0.5) { if (visible(P.x[i], P.y[i], P.z[i])) { spA[ms * 3] = P.x[i]; spA[ms * 3 + 1] = P.y[i]; spA[ms * 3 + 2] = P.z[i]; ms++; } continue; }
-    if (!P.touched[i] && !P.water[i] && P.age[i] < 0.165) continue; // falling column is drawn as the ribbon
+  for (let i = 0; i < n; i++) { if (!P.water[i] && P.gen[i] && P.vx[i] * P.vx[i] + P.vy[i] * P.vy[i] + P.vz[i] * P.vz[i] > 0.06) { if (visible(P.x[i], P.y[i], P.z[i])) { spA[ms * 3] = P.x[i]; spA[ms * 3 + 1] = P.y[i]; spA[ms * 3 + 2] = P.z[i]; ms++; } continue; }
     if ((P.x[i] - CX) * FWD.x + (P.y[i] - CY) * FWD.y + (P.z[i] - CZ) * FWD.z < 0.13 || !visible(P.x[i], P.y[i], P.z[i])) continue; pos[m * 3] = P.x[i]; pos[m * 3 + 1] = P.y[i]; pos[m * 3 + 2] = P.z[i]; gen[m] = (P.gen[i] ? 1 : (P.touched[i] ? 0 : 2)) + (P.water[i] ? 4 : 0); szA[m] = (!P.water[i] && P.touched[i] && !P.gen[i]) ? Math.max(0.3, 1 - Math.max(0, P.age[i] - 0.7) / 1.9) : 1; m++;
+    if (!P.touched[i] && !P.water[i]) { // airborne jet: gap-fill splats back along the path -> continuous, organic column
+      for (let k = 1; k <= 3; k++) { const f = k / 4 / 120; pos[m * 3] = P.x[i] - P.vx[i] * f; pos[m * 3 + 1] = P.y[i] - P.vy[i] * f; pos[m * 3 + 2] = P.z[i] - P.vz[i] * f; gen[m] = 2; szA[m] = 0.9 + 0.2 * Math.sin(i * 2.3 + k); m++; }
+    } else if (P.touched[i] && m < MAXN * 4 - 2) { // landed liquid: extra small splats around each particle -> continuous fine film, no blobs
+      const sz0 = szA[m - 1], g0 = gen[m - 1], j = 0.0045;
+      for (let k = 0; k < 2; k++) { const a = i * 1.618 + k * 3.14; pos[m * 3] = P.x[i] + Math.cos(a) * j; pos[m * 3 + 1] = P.y[i] + Math.sin(a) * j * 0.5; pos[m * 3 + 2] = P.z[i] + Math.sin(a) * j; gen[m] = g0; szA[m] = sz0; m++; }
+    }
   }
-  spGeo.attributes.position.needsUpdate = true; spGeo.setDrawRange(0, ms); buildRibbon();
+  spGeo.attributes.position.needsUpdate = true; spGeo.setDrawRange(0, ms);
   pGeo.attributes.position.needsUpdate = true; pGeo.attributes.gen.needsUpdate = true; pGeo.attributes.sz.needsUpdate = true; pGeo.setDrawRange(0, m);
   const [rw, rh] = RT.size, L = LEVELS[qi];
   const scale = cam.projectionMatrix.elements[5] * rh / 2;
@@ -566,7 +571,7 @@ function render() {
   pts.material = mats.thickMat; renderer.setRenderTarget(RT.thick); renderer.clear(true, false); renderer.render(sc, cam);
   // blur
   const bd = mats.blurDepth.uniforms, bt = mats.blurThick.uniforms;
-  bd.rad.value = L.blur; bt.rad.value = Math.max(2, L.blur * 0.4);
+  bd.rad.value = L.blur; bt.rad.value = Math.max(2, L.blur * 0.5);
   bd.tex.value = RT.depth.texture; bd.dir.value.set(1 / rw, 0); runQuad(mats.blurDepth, RT.a);
   bd.tex.value = RT.a.texture; bd.dir.value.set(0, 1 / rh); runQuad(mats.blurDepth, RT.b);
   bd.tex.value = RT.b.texture; bd.dir.value.set(0.7 / rw, 0.7 / rh); runQuad(mats.blurDepth, RT.a);
@@ -615,7 +620,7 @@ function initFX() {
     fragmentShader: `void main(){ vec2 c=gl_PointCoord*2.-1.; float r=dot(c,c); if(r>1.) discard; gl_FragColor=vec4(vec3(1.,0.97,0.82)*(1.-r*0.5),0.75*(1.-r)); }`,
     transparent: true, depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending });
   const sp = new THREE.Points(spGeo, spMat); sp.frustumCulled = false;
-  fxScene = new THREE.Scene(); fxScene.add(sp); fxScene.add(rib);
+  fxScene = new THREE.Scene(); fxScene.add(sp); // v4: ribbon tube retired (jet is screen-space fluid again)
 }
 const TJ = 0.2;
 function buildRibbon() {
