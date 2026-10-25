@@ -46,3 +46,35 @@ Final boss MAMA LEGS: hp 1900 -> 1550, baby-spawn interval 2.8 s -> 3.3 s, babie
 0.6  100 100 100 100 100 83 100 100 83 100 100 100 100 100 100 100 100 33
 0.85 100 100 100 100 100 83 100 100 100 100 100 100 100 100 100 100 100 66
 ```
+
+## v5 — painted plate, flat stream, fan wash, ash can, hand flush (2026-10-25)
+
+Geometry now comes from one painted plate (`art/plate5`, 720×1280, cover-fit). The interior contour was measured in plate pixels:
+top edge y=515, rounded corners r=52, straight walls x=168/558 down to y=860, then a half-ellipse floor to y=1095. The drain is at (356,969).
+The bowl is ~23% shorter in logical units than v4, so all bug speeds, knockback, spawn offsets and stream hit radius are multiplied by
+`L.K = wallH/496`, which makes travel times and hit areas match v4. Spawns moved up to y=1025 so groups do not stack in the narrow floor.
+
+- **Stream:** a flat, constant-width line (purely visual change).
+- **Fan wash:** every impact also hits bugs inside an irregular fan.
+  - The apex is the impact point and the fan opens down the wall, skewed by aim and the wall's curvature, and bends to the drain low down.
+  - Length is (112+12·wid)·K and the half-angle is .72+.05·wid rad.
+  - Damage is `dmg·0.30·(1−r/len)` and knockback `kb·0.30·(1−r/len)`, on top of the full direct hit inside `rad`.
+- **Early call (ash can):**
+  - When no live bugs remain and the next group is more than 1.4s away, tap the can (or press C).
+  - The rest of the queue is pulled forward to spawn 0.9s later, and you get a bonus of max(2, round(3·(gap−0.9))) coins.
+  - A hand shakes the can's ash and butts into the bowl, so non-boss bugs move 32% slower for 7s.
+  - The sim bot calls with probability skill·0.5 per decision. Calls mostly happen on L1–L3 and for strong players, which is intended.
+- **Flush:** the kill front follows the rim water: it starts 0.34s after the press and sweeps down in about 1.05s. Bugs stay frozen until t=1.8s (was 1.3s).
+- **Retune:** DMT L10 .85→.75, L11 .85→.8, L13 1.1→.95, L14 1→.85; MAMA LEGS hp 1550→1700.
+
+Sim win % per level (6 seeds, bot buys upgrades), `_work/sim.py`:
+
+```
+0.35 100 83 100 100 66 0 100 100 50 50 0 0 50 50 0 33 66 0
+0.6  100 100 100 100 100 83 100 100 100 100 100 100 100 83 100 100 100 83
+0.85 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100
+```
+Compared with v4:
+- Low skill is in the same band (gated by coins, with boss walls at L6, L12 and L18).
+- Mid skill is a little easier: the wash rewards sweeping clusters.
+- The final boss still costs a mid-skill bot about one run in six.
