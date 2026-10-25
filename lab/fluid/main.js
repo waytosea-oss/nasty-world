@@ -199,7 +199,8 @@ function collide(i) {
         for (let it = 0; it < 3; it++) { const ff = F(x, y, z); if (ff <= 0) break; const gg = gradF(x, y, z), g2 = gg[0] * gg[0] + gg[1] * gg[1] + gg[2] * gg[2] || 1; x -= gg[0] * ff / g2 * 1.05; y -= gg[1] * ff / g2 * 1.05; z -= gg[2] * ff / g2 * 1.05; }
         const gg = gradF(x, y, z), l = Math.hypot(gg[0], gg[1], gg[2]) || 1; nx = -gg[0] / l; ny = -gg[1] / l; nz = -gg[2] / l;
         P.wet[i] = 1; P.touched[i] = 1;
-      } else if (m === dTop) { z = BX[5] + 1e-4; nz = 1; }
+      } else if (!P.water[i] && !P.touched[i]) { return false; } // airborne jet hitting the outer body (top of urinal, out of play) -> drop it, never pile up
+      else if (m === dTop) { z = BX[5] + 1e-4; nz = 1; }
       else if (m === dFront) { y = BX[3] + 1e-4; ny = 1; }
       else if (m === dL) { x = BX[0] - 1e-4; nx = -1; }
       else if (m === dR) { x = BX[1] + 1e-4; nx = 1; }
@@ -232,9 +233,9 @@ function emitterOrigin(t) {
 }
 function emit(dt, t) {
   flowOn = AUTO || !everTouch || dragId !== null;
+  aim.x += (aim.tx - aim.x) * Math.min(1, dt * 14); aim.y += (aim.ty - aim.y) * Math.min(1, dt * 14); aim.z += (aim.tz - aim.z) * Math.min(1, dt * 14);
   if (!flowOn || flushT > 0) { lastO = null; return; } // flush: the stream pauses so the clear sheet reads clean
   const L = LEVELS[qi];
-  aim.x += (aim.tx - aim.x) * Math.min(1, dt * 14); aim.y += (aim.ty - aim.y) * Math.min(1, dt * 14); aim.z += (aim.tz - aim.z) * Math.min(1, dt * 14);
   const o = emitterOrigin(t).clone();
   // flight time: shortest ballistic arc that enters through the opening (front face) without clipping the rim
   const T = 0.2;
@@ -244,7 +245,8 @@ function emit(dt, t) {
   const pulse = 1 + 0.12 * Math.sin(t * 9);
   emitAcc += L.rate * 1.3 * dt * pulse;
   const n = Math.floor(emitAcc); emitAcc -= n;
-  for (let k = 0; k < n && P.n < Math.min(MAXN, L.maxN); k++) {
+  const cap = Math.min(MAXN, flushes ? Math.max(L.maxN, Math.round(L.maxN * 1.6)) : L.maxN); // leftover flush water must not starve the stream
+  for (let k = 0; k < n && P.n < cap; k++) {
     const f = (k + Math.random()) / Math.max(1, n);
     const i = P.n++;
     const ox = lastO ? lastO.x + (o.x - lastO.x) * f : o.x, oy = lastO ? lastO.y + (o.y - lastO.y) * f : o.y, oz = lastO ? lastO.z + (o.z - lastO.z) * f : o.z;
@@ -434,7 +436,7 @@ function initGL() {
   const thickMat = new THREE.ShaderMaterial({
     uniforms: { uScale: { value: 1 }, uRad: { value: RAD } }, vertexShader: pv,
     fragmentShader: `varying float vZ; varying float vR; varying float vP; varying float vJ; varying float vT; varying float vW; void main(){ vec2 c=gl_PointCoord*2.-1.; float r2=dot(c,c); if(r2>1.) discard; float nz=sqrt(1.-r2); float t=nz*vR*2.*100.*vT*(vJ>0.5?4.0:1.0); gl_FragColor=vec4(t,t*vP,t*vJ,t*vW); }`,
-    depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending, transparent: true,
+    depthTest: false, depthWrite: false, blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.OneFactor, blendDst: THREE.OneFactor, blendSrcAlpha: THREE.OneFactor, blendDstAlpha: THREE.OneFactor, transparent: true,
   });
   const blurDepth = new THREE.ShaderMaterial({
     uniforms: { tex: { value: null }, dir: { value: new THREE.Vector2() }, rad: { value: 6 }, fall: { value: 0.02 } }, vertexShader: vsQuad,
@@ -715,20 +717,20 @@ const AIMS = ['relative', 'offset', 'direct'];
 let aimMode = AIMS.includes(Q.get('aim')) ? Q.get('aim') : 'relative';
 let dragId = null, lastPX = 0, lastPY = 0, AX = 0, AY = 0, touchFlow = false, everTouch = false;
 const GAIN = 1.3, OFFY = 90, AIML = { relative: 'Pad', offset: 'Offset', direct: 'Direct' };
-function aimBounds() { // screen-space box of the bowl opening, used to clamp the reticle
-  const a = toScreen(new THREE.Vector3(C.x - R[0] * 0.92, 0.16, C.z)), b = toScreen(new THREE.Vector3(C.x + R[0] * 0.92, 0.16, C.z));
-  const t = toScreen(new THREE.Vector3(C.x, 0.12, C.z + R[2] * 0.8)), u = toScreen(new THREE.Vector3(C.x, 0.2, C.z - R[2] * 0.92));
-  return [Math.min(a[0], b[0]), Math.max(a[0], b[0]), Math.min(t[1], u[1]), Math.max(t[1], u[1])];
+function aimBounds() { // screen box of the painted inner bowl (plate px x 245..610, y 540..1060), valid at any framing
+  return [PL.ox + 245 * PL.s, PL.ox + 610 * PL.s, PL.oy + 540 * PL.s, PL.oy + 1060 * PL.s];
 }
 function setAimScreen(x, y) { const bb = aimBounds(); AX = Math.min(bb[1], Math.max(bb[0], x)); AY = Math.min(bb[3], Math.max(bb[2], y)); aimAt(AX, AY); }
 function curAimScreen() { const p = toScreen(new THREE.Vector3(aim.x, aim.y, aim.z)); return [p[0], p[1]]; }
 function pDown(e) {
-  if (dragId !== null || e.target.closest && e.target.closest('#bar')) return; // multitouch-safe: first finger owns the aim
-  dragId = e.pointerId; lastPX = e.clientX; lastPY = e.clientY; everTouch = true; touchFlow = true; $('tip').style.opacity = 0;
-  if (aimMode === 'relative') { [AX, AY] = curAimScreen(); }
+  if (e.target.closest && e.target.closest('#bar')) return;
+  if (dragId !== null && !e.isPrimary) return; // a new primary pointer means the old gesture ended (lost pointerup) -> take over // multitouch-safe: first finger owns the aim
+  dragId = e.pointerId; lastPX = e.clientX; lastPY = e.clientY; touchFlow = true; $('tip').style.opacity = 0;
+  if (aimMode === 'relative') { // first touch ever: start mid-bowl (the idle aim can sit on the rim at the zoomed framing); afterwards no jump
+    if (!everTouch) { const bb = aimBounds(); setAimScreen((bb[0] + bb[1]) / 2, bb[2] + (bb[3] - bb[2]) * 0.55); } else { [AX, AY] = curAimScreen(); setAimScreen(AX, AY); } }
   else if (aimMode === 'offset') setAimScreen(e.clientX, e.clientY - OFFY);
   else setAimScreen(e.clientX, e.clientY);
-  e.preventDefault();
+  everTouch = true; e.preventDefault();
 }
 function pMove(e) {
   if (e.pointerId !== dragId) return;
@@ -741,10 +743,11 @@ function pUp(e) { if (e.pointerId !== dragId) return; dragId = null; touchFlow =
 window.addEventListener('pointerdown', pDown, { passive: false });
 window.addEventListener('pointermove', pMove, { passive: false });
 window.addEventListener('pointerup', pUp); window.addEventListener('pointercancel', pUp);
+document.addEventListener('touchend', e => { if (!e.touches.length) { dragId = null; touchFlow = false; } });
 for (const ev of ['touchstart', 'touchmove']) document.addEventListener(ev, e => { if (!(e.target.closest && e.target.closest('#bar'))) e.preventDefault(); }, { passive: false });
 $('ba').textContent = 'Aim: ' + AIML[aimMode];
 $('ba').onclick = () => { aimMode = AIMS[(AIMS.indexOf(aimMode) + 1) % AIMS.length]; $('ba').textContent = 'Aim: ' + AIML[aimMode]; };
-window.__aimst = () => ({ mode: aimMode, AX, AY, aim: [aim.x, aim.y, aim.z], flow: flowOn, scr: curAimScreen() });
+window.__aimst = () => ({ dragId, everTouch, mode: aimMode, AX, AY, aim: [aim.x, aim.y, aim.z], flow: flowOn, scr: curAimScreen() });
 const QN = ['Auto', 'Low', 'Med', 'High', 'Ultra'];
 let qSel = qAuto ? 0 : qi + 1;
 $('bq').textContent = 'Quality: ' + QN[qSel];
@@ -797,3 +800,6 @@ function frame(now) {
   requestAnimationFrame(frame);
 })();
 window.__aim = (x, y) => aimAt(x, y); window.__dbg = () => { const o = []; for (let i = 0; i < P.n; i += 40) { const s = toScreen(new THREE.Vector3(P.x[i], P.y[i], P.z[i])); o.push([+P.x[i].toFixed(3), +P.y[i].toFixed(3), +P.z[i].toFixed(3), s.map(v => +v.toFixed(2)), P.age[i].toFixed(2)]); } return { o, aim, R: RT.size, ext: renderer.extensions.has("EXT_color_buffer_float") }; };
+setTimeout(() => { if (!AUTO && !everTouch) { const bb = aimBounds(); setAimScreen((bb[0] + bb[1]) / 2, bb[2] + (bb[3] - bb[2]) * 0.55); } }, 300); // idle aim mid-bowl at any framing
+window.__jetn = () => { let a = 0; for (let i = 0; i < P.n; i++) if (!P.touched[i] && !P.water[i]) a++; return { air: a, n: P.n, flushT, flowOn, s: [0, 100, 300, 600].map(i => [P.x[i], P.y[i], P.z[i], P.ox[i], P.oy[i], P.oz[i], P.age[i], P.gen[i]].map(v => +(+v).toFixed(3))), simT, acc, qi, aim: [aim.x, aim.y, aim.z, aim.tx, aim.ty, aim.tz] }; };
+window.__bb = () => aimBounds();
