@@ -100,3 +100,7 @@ Compared with v4:
 - Stream: continuous glassy column (gradient body, twisting edge highlights, scrolled texture ripples), drawn behind rim props above the bowl top.
 - Impact: crown sprite at apex + translucent sheet flowing downhill + rivulets to drain + multiply wet decal. Damage zones unchanged.
 - Toe caps: per-foot painted front-facing toe boxes (toeL5/toeR5), darker in lip shadow. Phone lies flat on the top deck; can + phone reseated on the deck with contact shadows. Visual only.
+
+## v5g
+- Flush redone: full-bowl water sheet (front sweeps rimY->drain in ~0.9 s, tail drains 1.3-2.05 s, swirl, wet sheen until 3.2 s). Every non-boss bug between the tail and the front is washed (previously only bugs touching the wall sheets). Bosses still take 12% once. Sim: skill .35 wins rose slightly on L9/L13/L14 (0->33, 50->66, 16->33); .6/.85 unchanged.
+- Perf: adaptive DPR, cached lip/stains, per-frame stream buffer cache, pre-decoded art.
