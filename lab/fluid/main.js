@@ -149,7 +149,7 @@ function relax(dt) {
       }
     }
     nbN[i] = cnt; P.rho[i] = rho;
-    PR[i] = P.water[i] ? 5 * (rho - 1.0) : K_ST * (rho - RHO0); PN[i] = K_NEAR * rhoN;
+    PR[i] = P.water[i] ? 4 * (rho - 0.6) : K_ST * (rho - RHO0); PN[i] = K_NEAR * rhoN;
   }
   // pairwise displacement (each pair once) + XSPH viscosity
   for (let i = 0; i < P.n; i++) {
@@ -226,7 +226,7 @@ function emit(dt, t) {
   window.__T = [T, o.x, o.y, o.z];
   const v = new THREE.Vector3((aim.x - o.x) / T, (aim.y - o.y) / T, (aim.z - o.z - 0.5 * GRAV * T * T) / T);
   const pulse = 1 + 0.12 * Math.sin(t * 9);
-  emitAcc += L.rate * dt * pulse;
+  emitAcc += L.rate * 1.3 * dt * pulse;
   const n = Math.floor(emitAcc); emitAcc -= n;
   for (let k = 0; k < n && P.n < Math.min(MAXN, L.maxN); k++) {
     const f = (k + Math.random()) / Math.max(1, n);
@@ -244,12 +244,12 @@ function emit(dt, t) {
 
 // ---------- flush: big volume of clear water from the rim inlet, sheeting over the whole bowl ----------
 let flushT = 0, flushAcc = 0, flushes = 0;
-const FLUSH_DUR = 2.6;
+const FLUSH_DUR = 2.8;
 function startFlush() { if (flushT > 0) return; flushT = 0.0001; flushes++; }
 function emitFlush(dt) {
   if (flushT <= 0) return;
   flushT += dt; if (flushT > FLUSH_DUR) { flushT = 0; return; }
-  const ramp = Math.min(1, flushT / 0.25) * Math.max(0, Math.min(1, (1.9 - flushT) / 0.6));
+  const ramp = Math.min(1, flushT / 0.25) * Math.max(0.25, Math.min(1, (2.0 - flushT) / 0.8)) * (flushT < 2.4 ? 1 : 0);
   flushAcc += 3000 * dt * ramp * (0.6 + 0.4 * LEVELS[qi].rt / 0.75);
   const n = Math.floor(flushAcc); flushAcc -= n;
   for (let k = 0; k < n && P.n < MAXN; k++) {
@@ -349,7 +349,9 @@ function bugCollide(i) {
     // damage proportional to impact momentum (unit mass): direct jet full, ricochet droplets reduced
     const mult = gen === 0 ? 1 : gen === 1 ? 0.35 : 0.12;
     damage(B, 0.16 * (-vn + 0.3 * speed) * mult, P.vx[i], P.vy[i], P.vz[i]);
-    if (gen === 0) hitsJet++; else hitsSplash++;
+    if (gen === 0) { hitsJet++; if (Math.random() < 0.6 && P.n < MAXN) { const k = P.n++; const a = Math.random() * 6.283, sp2 = speed * (0.25 + Math.random() * 0.3);
+        P.x[k] = B.p.x + nx * r; P.y[k] = B.p.y + ny * r; P.z[k] = B.p.z + nz * r; P.vx[k] = Math.cos(a) * sp2 + nx * 0.4; P.vy[k] = Math.abs(ny) * 0.3 + Math.random() * 0.25; P.vz[k] = Math.abs(Math.sin(a)) * sp2 * 0.8 + 0.3;
+        P.ox[k] = P.x[k]; P.oy[k] = P.y[k]; P.oz[k] = P.z[k]; P.age[k] = 0; P.gen[k] = 1; P.wet[k] = 0; P.touched[k] = 1; P.water[k] = 0; } } else hitsSplash++;
     // ricochet as a droplet: reflect + random spray, mostly outward (towards camera / sideways)
     const e = 0.45 + Math.random() * 0.25;
     P.vx[i] -= (1 + e) * vn * nx; P.vy[i] -= (1 + e) * vn * ny; P.vz[i] -= (1 + e) * vn * nz;
@@ -387,7 +389,8 @@ function step(dt, t) {
     const dd = dx * dx + dy * dy + dz * dz;
     const dr = flushT > 0 ? 0.045 : 0.03; if (dd < dr * dr) { kill(i); drained++; continue; }
     if (P.wet[i] && dd < 0.15 * 0.15) { const s = 2.2 * dt; P.vx[i] -= dx / Math.sqrt(dd) * s; P.vy[i] -= dy / Math.sqrt(dd) * s; } // funnel toward drain
-    if (P.age[i] > 7 || P.z[i] < 0.02) kill(i);
+    if (P.age[i] > 7 || P.z[i] < BX[4] || (P.y[i] > CAL.yf + 0.005 && P.z[i] < LIPZ + 0.02) || (!P.water[i] && P.touched[i] && P.age[i] > 3.4)) { kill(i); continue; }
+    if (P.wet[i]) { const m = Math.sin(i * 1.7 + P.z[i] * 55) + 0.5 * Math.sin(i * 0.37 + P.z[i] * 130); P.vx[i] += m * 0.5 * dt; } // irregular rivulets
   }
 }
 
@@ -397,19 +400,24 @@ const vsQuad = `varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position
 let mats = null, pGeo, pts, quadScene, quadCam, quadMesh, dbgScene;
 function initGL() {
   pGeo = new THREE.BufferGeometry();
-  pGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(MAXN * 3), 3).setUsage(THREE.DynamicDrawUsage));
-  pGeo.setAttribute('gen', new THREE.BufferAttribute(new Float32Array(MAXN), 1).setUsage(THREE.DynamicDrawUsage));
+  pGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(MAXN * 4 * 3), 3).setUsage(THREE.DynamicDrawUsage));
+  pGeo.setAttribute('gen', new THREE.BufferAttribute(new Float32Array(MAXN * 4), 1).setUsage(THREE.DynamicDrawUsage));
+  pGeo.setAttribute('sz', new THREE.BufferAttribute(new Float32Array(MAXN * 4), 1).setUsage(THREE.DynamicDrawUsage));
   pGeo.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0.3, 0.8), 5);
-  const pv = `uniform float uScale, uRad; attribute float gen; varying float vZ; varying float vR; varying float vP;
-    void main(){ vec4 mv=modelViewMatrix*vec4(position,1.); float w=step(3.5,gen); float g=gen-4.*w; vP=1.-w; vR=uRad*(g>1.5?0.85:(g>0.5?0.75:1.0))*(1.+1.1*w); gl_PointSize=max(1.5, vR*uScale/-mv.z); vZ=-mv.z; gl_Position=projectionMatrix*mv; }`;
+  const pv = `uniform float uScale, uRad; attribute float gen; attribute float sz; varying float vZ; varying float vR; varying float vP; varying float vJ; varying float vT;
+    void main(){ vec4 mv=modelViewMatrix*vec4(position,1.); float w=step(3.5,gen); float g=gen-4.*w; vP=1.-w; vJ=step(1.5,g)*step(2.5,-g+5.)*(1.-w)*step(g,2.5);
+      // jet: thin, and narrower near the camera (top of screen); splash: fine droplets; film: thin; water sheet: wide
+      float jr = 0.62*clamp(-mv.z/0.75,0.45,1.0);
+      vR=uRad*sz*(g>1.5?jr:(g>0.5?0.42:(w<0.5?1.8:1.3)))*(1.+0.9*w);
+      vT=(g<0.5&&w<0.5)?0.22:1.0; gl_PointSize=max(1.5, vR*uScale/-mv.z); vZ=-mv.z; gl_Position=projectionMatrix*mv; }`;
   const depthMat = new THREE.ShaderMaterial({
     uniforms: { uScale: { value: 1 }, uRad: { value: RAD } }, vertexShader: pv,
-    fragmentShader: `varying float vZ; varying float vR; varying float vP; void main(){ vec2 c=gl_PointCoord*2.-1.; c.y=-c.y; float r2=dot(c,c); if(r2>1.) discard; float nz=sqrt(1.-r2); gl_FragColor=vec4(vZ-nz*vR,0.,0.,1.); }`,
+    fragmentShader: `varying float vZ; varying float vR; varying float vP; varying float vJ; varying float vT; void main(){ vec2 c=gl_PointCoord*2.-1.; c.y=-c.y; float r2=dot(c,c); if(r2>1.) discard; float nz=sqrt(1.-r2); gl_FragColor=vec4(vZ-nz*vR*(vT<0.9?0.15:1.),0.,0.,1.); }`,
     depthTest: true, depthWrite: true, blending: THREE.NoBlending,
   });
   const thickMat = new THREE.ShaderMaterial({
     uniforms: { uScale: { value: 1 }, uRad: { value: RAD } }, vertexShader: pv,
-    fragmentShader: `varying float vZ; varying float vR; varying float vP; void main(){ vec2 c=gl_PointCoord*2.-1.; float r2=dot(c,c); if(r2>1.) discard; float nz=sqrt(1.-r2); float t=nz*vR*2.*100.; gl_FragColor=vec4(t,t*vP,0.,1.); }`,
+    fragmentShader: `varying float vZ; varying float vR; varying float vP; varying float vJ; varying float vT; void main(){ vec2 c=gl_PointCoord*2.-1.; float r2=dot(c,c); if(r2>1.) discard; float nz=sqrt(1.-r2); float t=nz*vR*2.*100.*vT*(vJ>0.5?1.6:1.0); gl_FragColor=vec4(t,t*vP,t*vJ,1.); }`,
     depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending, transparent: true,
   });
   const blurDepth = new THREE.ShaderMaterial({
@@ -426,7 +434,7 @@ function initGL() {
   const blurThick = new THREE.ShaderMaterial({
     uniforms: { tex: { value: null }, dir: { value: new THREE.Vector2() }, rad: { value: 6 } }, vertexShader: vsQuad,
     fragmentShader: `uniform sampler2D tex; uniform vec2 dir; uniform float rad; varying vec2 vUv;
-      void main(){ vec2 s2=vec2(0.); float w=0.; float sig=rad*0.5; for(int i=-12;i<=12;i++){ float fi=float(i); if(abs(fi)>rad) continue; float ws=exp(-fi*fi/(2.*sig*sig)); s2+=texture2D(tex,vUv+dir*fi).rg*ws; w+=ws; } gl_FragColor=vec4(s2/w,0.,1.); }`,
+      void main(){ vec3 s2=vec3(0.); float w=0.; float sig=rad*0.5; for(int i=-12;i<=12;i++){ float fi=float(i); if(abs(fi)>rad) continue; float ws=exp(-fi*fi/(2.*sig*sig)); s2+=texture2D(tex,vUv+dir*fi).rgb*ws; w+=ws; } gl_FragColor=vec4(s2/w,1.); }`,
     depthTest: false, depthWrite: false,
   });
   const comp = new THREE.ShaderMaterial({
@@ -436,7 +444,7 @@ function initGL() {
       vec3 vpos(vec2 uv, float d){ vec4 v=invP*vec4(uv*2.-1.,-1.,1.); v/=v.w; return v.xyz/(-v.z)*d; }
       void main(){
         vec3 base=texture2D(bg,vUv).rgb;
-        float d=texture2D(dep,vUv).r; vec2 tk=texture2D(thk,vUv).rg; float th=tk.r; float pf=clamp(tk.g/max(th,1e-4),0.,1.);
+        float d=texture2D(dep,vUv).r; vec3 tk=texture2D(thk,vUv).rgb; float th=tk.r; float pf=clamp(tk.g/max(th,1e-4),0.,1.); float jf=clamp(tk.b/max(th,1e-4),0.,1.);
         if(d<=0.||show<0.5||th<0.02){ gl_FragColor=vec4(base,1.); return; }
         vec3 p=vpos(vUv,d);
         float dr=texture2D(dep,vUv+vec2(texel.x,0.)).r, dl=texture2D(dep,vUv-vec2(texel.x,0.)).r;
@@ -447,20 +455,21 @@ function initGL() {
         vec3 ddy2= (dd>0.) ? p-vpos(vUv-vec2(0.,texel.y),dd) : ddy; if(abs(ddy2.z)<abs(ddy.z)) ddy=ddy2;
         vec3 n=normalize(cross(ddx,ddy)); if(n.z<0.) n=-n;
         vec3 v=normalize(-p);
-        float t=clamp(th,0.,6.);
+        float t=clamp(th,0.,6.)*mix(0.4,1.,jf); t=min(t,0.9+4.7*jf);
         // refraction of the painted background through the liquid
         vec2 ruv=vUv + n.xy*(0.004+0.0025*t)*vec2(1.,0.6);
         vec3 refr=texture2D(bg,clamp(ruv,0.001,0.999)).rgb;
-        vec3 absorb=mix(vec3(0.03,0.015,0.008),vec3(0.025,0.075,0.32),pf);              // pale yellow tint grows with thickness
-        vec3 trans=refr*exp(-absorb*t*0.9)*1.04 + vec3(0.05,0.04,0.0)*min(t,2.)*pf + vec3(0.02,0.03,0.04)*min(t,2.)*(1.-pf);
+        vec3 absorb=mix(vec3(0.03,0.015,0.008),vec3(0.01,0.035,0.15),pf);              // pale yellow tint grows with thickness
+        vec3 trans=refr*exp(-absorb*t*0.9)*1.04 + vec3(0.03,0.025,0.0)*min(t,1.)*pf + vec3(0.02,0.03,0.04)*min(t,2.)*(1.-pf);
         float ndv=max(dot(n,v),0.); float fres=0.03+0.97*pow(1.-ndv,5.);
         vec3 L1=normalize(vec3(-0.4,0.8,0.6)), L2=normalize(vec3(0.6,0.3,0.7));
         vec3 h1=normalize(L1+v), h2=normalize(L2+v);
         float spec=pow(max(dot(n,h1),0.),90.)*1.6 + pow(max(dot(n,h2),0.),40.)*0.35;
         vec3 r=reflect(-v,n); vec3 env=mix(refr*0.9+0.08,vec3(1.0,0.97,0.9),smoothstep(-0.1,0.9,r.y));
-        vec3 col=mix(trans,env,fres*0.85)+spec*vec3(1.,0.98,0.9);
+        vec3 col=mix(trans,env,fres*0.85)+spec*vec3(1.,0.98,0.9)*(1.+jf);
+        col += jf*vec3(1.,0.96,0.80)*0.28*smoothstep(0.55,1.0,ndv); // bright glassy core of the jet
         col += vec3(0.05,0.04,0.0)*smoothstep(0.4,0.0,ndv);
-        float a=smoothstep(0.03,0.6,th);
+        float a=smoothstep(0.02,0.45,th)*mix(0.8,1.,jf);
         gl_FragColor=vec4(mix(base,col,a),1.);
       }`,
     depthTest: false, depthWrite: false,
@@ -497,7 +506,7 @@ function drawBG(dt) {
   // wet stain accumulating where the liquid ran
   stx.globalCompositeOperation = 'destination-out'; stx.fillStyle = `rgba(0,0,0,${Math.min(1, dt * (flushT > 0 ? 1.5 : 0.08))})`; stx.fillRect(0, 0, stain.width, stain.height);
   stx.globalCompositeOperation = 'source-over'; stx.fillStyle = 'rgba(150,120,30,0.05)';
-  for (let i = 0; i < P.n; i += 3) { if ((!P.wet[i] && P.age[i] < 0.3) || P.water[i]) continue; V.set(P.x[i], P.y[i], P.z[i]).project(cam); const x = (V.x + 1) / 4 * W, y = (1 - V.y) / 4 * H; stx.fillRect(x - 1.5, y - 1.5, 3, 3); }
+  for (let i = 0; i < P.n; i += 3) { if (!P.wet[i] || P.water[i]) continue; V.set(P.x[i], P.y[i], P.z[i]).project(cam); const x = (V.x + 1) / 4 * W, y = (1 - V.y) / 4 * H; stx.fillRect(x - 1.5, y - 1.5, 3, 3); }
   c.drawImage(stain, 0, 0, W, H);
   // bugs
   for (const B of BUGS) {
@@ -527,9 +536,12 @@ function drawBG(dt) {
 // ---------- render ----------
 let showMesh = !!Q.get('mesh');
 function render() {
-  const n = P.n, pos = pGeo.attributes.position.array, gen = pGeo.attributes.gen.array;
-  let m = 0; for (let i = 0; i < n; i++) { if ((P.x[i] - CX) * FWD.x + (P.y[i] - CY) * FWD.y + (P.z[i] - CZ) * FWD.z < 0.13 || !visible(P.x[i], P.y[i], P.z[i])) continue; pos[m * 3] = P.x[i]; pos[m * 3 + 1] = P.y[i]; pos[m * 3 + 2] = P.z[i]; gen[m] = (P.gen[i] ? 1 : (P.touched[i] ? 0 : 2)) + (P.water[i] ? 4 : 0); m++; }
-  pGeo.attributes.position.needsUpdate = true; pGeo.attributes.gen.needsUpdate = true; pGeo.setDrawRange(0, m);
+  const n = P.n, pos = pGeo.attributes.position.array, gen = pGeo.attributes.gen.array, szA = pGeo.attributes.sz.array;
+  let m = 0; for (let i = 0; i < n; i++) { if ((P.x[i] - CX) * FWD.x + (P.y[i] - CY) * FWD.y + (P.z[i] - CZ) * FWD.z < 0.13 || !visible(P.x[i], P.y[i], P.z[i])) continue; pos[m * 3] = P.x[i]; pos[m * 3 + 1] = P.y[i]; pos[m * 3 + 2] = P.z[i]; gen[m] = (P.gen[i] ? 1 : (P.touched[i] ? 0 : 2)) + (P.water[i] ? 4 : 0); szA[m] = (!P.water[i] && P.touched[i] && !P.gen[i]) ? Math.max(0.35, 1 - Math.max(0, P.age[i] - 1.0) / 2.4) : 1; m++;
+    if (!P.touched[i] && !P.water[i]) { // airborne jet: fill the gap to where it was last substep -> continuous glassy column
+      for (let k = 1; k <= 3; k++) { const f = k / 4 / 120; pos[m * 3] = P.x[i] - P.vx[i] * f; pos[m * 3 + 1] = P.y[i] - P.vy[i] * f; pos[m * 3 + 2] = P.z[i] - P.vz[i] * f; gen[m] = 2; szA[m] = 1; m++; }
+    } }
+  pGeo.attributes.position.needsUpdate = true; pGeo.attributes.gen.needsUpdate = true; pGeo.attributes.sz.needsUpdate = true; pGeo.setDrawRange(0, m);
   const [rw, rh] = RT.size, L = LEVELS[qi];
   const scale = cam.projectionMatrix.elements[5] * rh / 2;
   mats.depthMat.uniforms.uScale.value = scale * 2; mats.thickMat.uniforms.uScale.value = scale * 2;
@@ -539,7 +551,7 @@ function render() {
   pts.material = mats.thickMat; renderer.setRenderTarget(RT.thick); renderer.clear(true, false); renderer.render(sc, cam);
   // blur
   const bd = mats.blurDepth.uniforms, bt = mats.blurThick.uniforms;
-  bd.rad.value = L.blur; bt.rad.value = L.blur;
+  bd.rad.value = L.blur; bt.rad.value = Math.max(2, L.blur * 0.4);
   bd.tex.value = RT.depth.texture; bd.dir.value.set(1 / rw, 0); runQuad(mats.blurDepth, RT.a);
   bd.tex.value = RT.a.texture; bd.dir.value.set(0, 1 / rh); runQuad(mats.blurDepth, RT.b);
   bd.tex.value = RT.b.texture; bd.dir.value.set(0.7 / rw, 0.7 / rh); runQuad(mats.blurDepth, RT.a);
