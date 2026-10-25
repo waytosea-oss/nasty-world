@@ -155,3 +155,37 @@ v6.1   .85  100 ×15, 62 (L16), 100, 87                                        9
 - Final boss, average player (0.6), 28 seeds: **35%** (v6: 50%, v5g: 75%). The 8-seed table above shows 87% for L18, which is seed noise: L18 is very path-dependent.
 - Early levels (L1–L4) are still ~100% even for casual aim. L5 (first gecko wave), L9 and L13–L16 are now the walls for casual players.
 - Skilled stays ~97% in the sim. The 0.85 bot aims almost perfectly, so the human gap is larger than the bot gap. If phone tests still feel easy, raise HPB next (0.35 gave casual 37 / average 85 in the sim).
+
+## v6.2 — three difficulty tiers
+
+Picker on the title screen (and in the pause menu, which restarts the level). Saved in localStorage (`S.diff`, default **REGULAR / Normal**). Stars and unlock progress are kept per tier (`S.sd`, `S.ud`); coins and upgrades are shared. Old v6.1 saves migrate into EASY. HUD and pause subtitle show the tier. All knobs live in `DIFFS` in game.js; sim/tuning override with `?diff=<tier>&d_<key>=<v>`. The 2D fallback uses the same game.js rules.
+
+| knob | PEE-WEE (Easy) = v6.1 | REGULAR (Normal) | IRON BLADDER (Hard) |
+|---|---|---|---|
+| flat HP bonus (hpa) | 0 | +10% | +30% |
+| HP ramp at L17 (hpb) | +25% | +45% | +65% |
+| speed ramp at L17 (spb, final fspb) | 0 / 0 | +8% / +8% | +16% / 0 |
+| spawn count (n) | ×1 | ×1.1 | ×1.25 |
+| spawn gap (gap) | ×1 | ×0.9 | ×0.8 |
+| bladder cap / refill | ×1 / ×1 | ×0.9 / ×0.88 | ×0.85 / ×0.75 |
+| flushes per level | 2+upg | 2+upg | 2+upg |
+| flush wash threshold (flw) | 60% maxHP | 50% | 35% |
+| stream damage incl. splash/bounce (dmg) | ×1 | ×1 | ×0.85 |
+| boss HP (L6/L12) | ×1 | ×1.1 | ×1.3 |
+| final boss HP (L18) | ×0.92 | ×0.85 | ×0.68 (offsets weaker gun / fewer upgrades) |
+| coins earned | ×1 | ×1 | ×0.75 |
+
+Sim, real fluid, 28 seeds, greedy upgrade path per tier (overall win % over 18 levels; final = L18):
+
+| tier | casual .35 | average .6 | skilled .85 | L18 average | L18 skilled |
+|---|---|---|---|---|---|
+| Easy (v6.1) | 42* | 92* | 97* | 35 | — |
+| Normal | 26 | 72 | 97 | 21 | 89 |
+| Hard | 8 | 26 | 57 | 7 | 10 (28 in a separate L18-only 28-seed run) |
+
+\*v6.1 table (8 seeds), same code path.
+
+- Normal walls: L5 (casual), L9, L13–L18 (average).
+- Hard walls: L5 for casual, L9/L13/L15–L17 for everyone.
+- The skilled bot aims almost perfectly, so real skilled humans will sit below it.
+- Hard's average result (26) is a bit under the 30–40 target. That's deliberate, leaning harder. If phones say it's too brutal, raise hard `dmg` to .9 first.
