@@ -148,10 +148,17 @@ const SCN=(function(){
     // grip hand (enters from the right, C-grip round the can)
     if(SPR.ok('hand-grip')){const hh=hm.h*1.45;let gx,gy;const inK=t<T.grab?ease(t/T.grab):t>T.back?1-ease((t-T.back)/(T.end-T.back)):1;
       gx=x+(1-inK)*W*.7;gy=yc;c.save();c.translate(gx,gy);c.rotate(rot*.3);SPR.img(c,'hand-grip',0,0,hh,.1,.42);c.restore();}}
-  function drawHandPress(c){const F=G.flushFx;if(!F||F.t>1.1||!SPR.ok('hand-press'))return;const p=pipeGeo(),t=F.t,hh=150*PL.s*1.5;
-    const inK=t<FL.press?ease(t/FL.press):t<.55?1:1-ease((t-.55)/.5);const push=t>FL.press-.06&&t<.6?Math.sin(clamp((t-FL.press+.06)/.3,0,1)*Math.PI)*9*PL.s/.66:0;
-    c.save();c.translate(p.lx+(1-inK)*W*.75+2,p.ly+push-2);c.rotate(-.12+push*.004);SPR.img(c,'hand-press',0,0,hh,.035,.17);c.restore();
-    if(push>1){c.save();c.globalAlpha=.6;c.strokeStyle='#fff';c.lineWidth=2;for(const a of[-.6,0,.6]){c.beginPath();c.moveTo(p.lx-6+Math.cos(a-1.57)*14,p.ly-10+Math.sin(a-1.57)*14);c.lineTo(p.lx-6+Math.cos(a-1.57)*22,p.ly-10+Math.sin(a-1.57)*22);c.stroke();}c.restore();}}
+  // v5b: the painted lever is cut into its own layer so it visibly dips under the tattooed thumb
+  function levAng(){const F=G.flushFx;if(!F)return 0;const t=F.t;return t<FL.press-.08?0:t<FL.press+.08?.42*ease((t-FL.press+.08)/.16):t<1.45?.42:t<1.75?.42*(1-ease((t-1.45)/.3)):0;}
+  function drawLever(c){const a=levAng();if(a<=0||!SPR.ok('lever5')||!SPR.ok('leverbg5'))return;const s=PL.s;
+    SPR.img(c,'leverbg5',px(458),py(261),46*s,.5,.5);
+    c.save();c.translate(px(458),py(300));c.rotate(a);SPR.img(c,'lever5',0,py(283)-py(300),44*s,.5,1);c.restore();}
+  function drawHandPress(c){const F=G.flushFx;drawLever(c);if(!F||F.t>2.1||!SPR.ok('hand-press'))return;const p=pipeGeo(),t=F.t,hh=150*PL.s*1.5;
+    const inK=t<FL.press?ease(t/FL.press):t<1.5?1:1-ease((t-1.5)/.55);const a=levAng(),L0=40*PL.s;
+    // thumb rides the lever tip as it dips
+    const dx=Math.sin(a)*L0,dy=L0-Math.cos(a)*L0;
+    c.save();c.translate(p.lx+(1-inK)*W*.75+2+dx,p.ly-2+dy);c.rotate(-.12+a*.25);SPR.img(c,'hand-press',0,0,hh,.035,.17);c.restore();
+    if(a>.3&&t<.8){c.save();c.globalAlpha=.6;c.strokeStyle='#fff';c.lineWidth=2;for(const q of[-.6,0,.6]){c.beginPath();c.moveTo(p.lx-6+Math.cos(q-1.57)*14,p.ly-10+Math.sin(q-1.57)*14);c.lineTo(p.lx-6+Math.cos(q-1.57)*22,p.ly-10+Math.sin(q-1.57)*22);c.stroke();}c.restore();}}
   function drawParts2(c){for(const p of G.parts){if(p.k!=='butt')continue;c.save();c.translate(p.x,p.y);c.rotate(p.rot+p.t*6);c.fillStyle='#f3efe6';c.fillRect(-5,-1.6,7,3.2);c.fillStyle=p.col;c.fillRect(2,-1.6,4,3.2);c.restore();}}
   function drawFront(c){if(!S)return;drawParts2(c);drawCan(c);drawHandPress(c);drawFeet(c);bubble(c);
     const dr=S.door;if(dr.fx>0){const a=Math.min(1,dr.fx*1.5);c.save();c.globalAlpha=a;c.font='26px '+FONT;c.textAlign='center';c.lineWidth=6;c.strokeStyle='#111';c.fillStyle='#ffd23a';const y=L.U.y-6+Math.sin(S.t*30)*2*a;c.translate(W/2,y);c.rotate(-.05);c.strokeText(dr.txt,0,0);c.fillText(dr.txt,0,0);c.restore();}}

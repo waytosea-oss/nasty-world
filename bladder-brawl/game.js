@@ -157,7 +157,7 @@ function hurt(b){const T=BT[b.type];if(!SIMMODE)SCN.ev('stomp');const n=T.boss?3
   if(!SIMMODE){SFX.hurt();vib([70,40,90]);pop(b.x,L.rimY-24,['GOT OUT!','ESCAPED!','EWW, NO!','IT\u2019S LOOSE!'][Math.floor(rand(0,4))],'#ff7a9a',18,1.1);hudHearts(true);$('app').classList.remove('hurt');void $('app').offsetWidth;$('app').classList.add('hurt');}
   if(G.lives<=0){G.endT=.8;}}
 function doFlush(){if(G.state!=='play'||G.paused)return;if(G.flushes<=0||G.flushFx){if(!SIMMODE){SFX.deny();pop(200,L.rimY+40,G.flushes<=0?'No flushes left!':'Already flushing\u2026','#fff',15,.8);}return;}
-  G.flushes--;G.flushFx={t:0,id:rnd(),front:null};if(!SIMMODE)SCN.ev('flush');G.shake=1;if(!SIMMODE){SFX.flush();vib(120);pop(200,L.rimY+60,'FLUUUSH!','#9fe6ff',34,1.3);hudFlush();}}
+  G.flushes--;G.flushFx={t:0,id:rnd(),front:null};if(!SIMMODE)SCN.ev('flush');G.shake=1;if(!SIMMODE){SFX.flush();vib(120);hudFlush();}}
 /* ---------------- bot (for difficulty measurement) ---------------- */
 const BOT={on:Q.has('bot'),skill:.6,lag:0,tx:200,ty:400};
 function botStep(dt,st){const sk=BOT.skill;BOT.lag-=dt;
@@ -196,7 +196,10 @@ function update(dt){
   if(!G.power){G.powerT-=dt;if(G.powerT<=0&&G.queue.length+G.bugs.length>0){G.power={x:rand(wallL(L.rimY+40)+24,wallR(L.rimY+40)-24),y:L.rimY+14,t:0,got:false};G.powerT=rand(16,22);}}
   else{const p=G.power;p.t+=dt;if(!p.got){p.y+=dt*30*L.K;p.x+=Math.sin(p.t*1.6)*dt*30*L.K;if(p.y>L.waterY-10)G.power=null;}else if(p.t>.8)G.power=null;}
   if(G.flushFx){const f=G.flushFx;f.t+=dt;f.front=f.t>FL.w0?flushFront(L.cx,f.t):null;
-    if(f.t>FL.w0&&f.t<1.8)for(const b of G.bugs){if(b.dead||b.esc!=null||b.y>flushFront(b.x,f.t))continue;if(BT[b.type].boss){if(b.fl!==f.id){b.fl=f.id;damage(b,b.maxHp*.12,0);b.kbV=300*L.K;}}else kill(b,true);}
+    if(f.t>FL.w0&&f.t<2.2){const h=flHead(f.t),tl=flTail(f.t);for(const b of G.bugs){if(b.dead||b.esc!=null)continue;const T=BT[b.type],q=flNear(b.x,b.y);
+      const hit=q&&q.s<=h&&q.s>=tl&&q.d<=flW(q.s)+T.r*.7||(h>.97&&Math.hypot(b.x-L.drainX,b.y-L.waterY)<(70*PL.s+T.r));
+      if(hit){if(T.boss){if(b.fl!==f.id){b.fl=f.id;damage(b,b.maxHp*.12,0);b.kbV=300*L.K;}}else{kill(b,true);b.vx=(L.drainX-b.x)*1.6;b.vy=Math.max(120,(L.waterY-b.y)*1.6);}}
+      else if(!T.boss&&f.t>FL.w0+.35&&b.fw!==f.id&&b.y>L.rimY){b.fw=f.id;b.kbV=Math.max(b.kbV,110*L.K);}}}
     if(f.t>2.7)G.flushFx=null;}
   updFans(dt);updCall(dt);
   G.wt+=dt;while(G.queue.length&&G.queue[0].t<=G.wt)spawn(G.queue.shift());
@@ -215,14 +218,15 @@ function washDir(x,y,d){const hw=Math.max(20,(wallR(y)-wallL(y))/2);let a=Math.P
 function washAt(d,x,y){const sid=d.sid||0;let f=G.fans[sid];const a=washDir(x,y,d);
   if(!f||f.a<.05){f=G.fans[sid]={x,y,dir:a,len:5,a:1,seed:rnd()*9,last:G.t,hw:.5,tl:10};}
   else{f.x+=(x-f.x)*.35;f.y+=(y-f.y)*.35;const dd=Math.atan2(Math.sin(a-f.dir),Math.cos(a-f.dir));f.dir+=dd*.25;f.last=G.t;}
-  f.tl=(112+12*S.up.wid)*L.K*(G.super>0?1.3:1)*(.8+.4*clamp((y-L.rimY)/L.wallH,0,1));f.hw=.72+.05*S.up.wid;return f;}
-const WASH=.3;/* fan damage multiplier at the apex, linear falloff to 0 at the fan edge */
+  f.tl=(178+16*S.up.wid)*L.K*(G.super>0?1.3:1)*(.85+.35*clamp((y-L.rimY)/L.wallH,0,1));f.hw=.86+.05*S.up.wid;return f;}
+const WASH=.12;/* fan damage multiplier at the apex, linear falloff to 0 at the fan edge */
 function washHit(f,d){for(const b of G.bugs){if(b.dead||b.esc!=null||b._dh===d)continue;const T=BT[b.type],dx=b.x-f.x,dy=b.y-f.y,r=Math.hypot(dx,dy);if(r>f.len+T.r*.6)continue;
     const an=Math.atan2(Math.sin(Math.atan2(dy,dx)-f.dir),Math.cos(Math.atan2(dy,dx)-f.dir));if(Math.abs(an)>f.hw+Math.atan2(T.r*.6,Math.max(1,r)))continue;
     const fall=clamp(1-r/(f.len+T.r*.6),0,1);damage(b,d.dmg*(window.WASHM!=null?window.WASHM:WASH)*fall,d.kb*.3*fall);b.wet=.3;}}
 function updFans(dt){for(let i=0;i<G.fans.length;i++){const f=G.fans[i];if(!f)continue;f.ph=(f.ph||0)+dt;
     if(G.t-f.last<.08){f.a=Math.min(1,f.a+dt*8);f.len+=(f.tl-f.len)*Math.min(1,dt*9);}
-    else{f.a-=dt*2.2;f.x+=Math.cos(f.dir)*dt*46*L.K;f.y+=Math.sin(f.dir)*dt*46*L.K;f.len*=1+dt*.5;if(f.a<=0)G.fans[i]=null;}}}
+    else{f.a-=dt*2.2;f.x+=Math.cos(f.dir)*dt*46*L.K;f.y+=Math.sin(f.dir)*dt*46*L.K;f.len*=1+dt*.5;if(f.a<=0){if(!SIMMODE){(G.wet=G.wet||[]).push({P:fanPts(f),a:.55});if(G.wet.length>8)G.wet.shift();}G.fans[i]=null;}}}
+  if(G.wet)for(let i=G.wet.length-1;i>=0;i--){G.wet[i].a-=dt*.32;if(G.wet[i].a<=0)G.wet.splice(i,1);}}
 function impact(d){const x=d.x,y=d.y;if(!SIMMODE&&SCN.impact(d))return;if(y<L.rimY-16){if(!SIMMODE&&rnd()<.3)G.parts.push({k:'drop',x,y,vx:rand(-60,60),vy:rand(-60,30),t:0,life:.5,r:2,col:'#ffe56b'});return;}
   const r2=d.rad;for(const b of G.bugs){if(b.dead||b.esc!=null)continue;const R=BT[b.type].r+r2,dx=b.x-x,dy=b.y-y;if(dx*dx+dy*dy<R*R){b._dh=d;damage(b,d.dmg,d.kb);}}
   washHit(washAt(d,x,y),d);
@@ -291,7 +295,7 @@ function render(){const c=cx;c.setTransform(DPR*SC,0,0,DPR*SC,0,0);
     if(b.hitT>0)c.translate(rand(-1.5,1.5),0);
     if(!SPR.bug(c,b,G.t+b.ph))BUGART[b.type](c,b,G.t+b.ph);c.restore();
     if(!b.dead&&b.esc==null&&b.hp<b.maxHp&&!T.boss){const w=T.r*2;rr(c,b.x-w/2,b.y-T.r-14,w,6,3);fillS(c,'rgba(0,0,0,.45)');rr(c,b.x-w/2+1,b.y-T.r-13,(w-2)*clamp(b.hp/b.maxHp,0,1),4,2);c.fillStyle='#ffde4a';c.fill();}}
-  drawFans(c,.38);
+  drawFans(c,.5);
   // flush water
   drawFlush(c);
   drawStream(c);
@@ -318,36 +322,55 @@ function fanPts(f){const n=34,P=[],sd=f.seed,t=f.ph||0,L0=f.len;
   for(let i=0;i<=6;i++){const th=f.dir+f.hw+(Math.PI*2-2*f.hw)*i/6;P.push([f.x+Math.cos(th)*L0*.1,f.y+Math.sin(th)*L0*.1]);}
   for(let i=n;i>=0;i--){const u=i/n,th=f.dir-f.hw+2*f.hw*u+.05*Math.sin(u*7+t*4+sd);const nz=.8+.11*Math.sin(u*6.3+sd+t*5)+.07*Math.sin(u*13.7-t*8+sd*2)+.035*Math.sin(u*29+t*13);
     const r=L0*nz*(.5+.5*Math.pow(Math.sin(Math.PI*u),.55));P.push([f.x+Math.cos(th)*r,f.y+Math.sin(th)*r]);}return P;}
-function drawFans(c,al){let any=false;for(const f of G.fans)if(f&&f.a>0)any=true;if(!any)return;c.save();bowlPath(c,2);c.clip();
+function drawFans(c,al){let any=!!(G.wet&&G.wet.length&&al>.9);for(const f of G.fans)if(f&&f.a>0)any=true;if(!any)return;c.save();bowlPath(c,2);c.clip();
+  if(al>.9&&G.wet)for(const w of G.wet){c.beginPath();w.P.forEach((q,i)=>i?c.lineTo(q[0],q[1]):c.moveTo(q[0],q[1]));c.closePath();c.globalAlpha=w.a*.55;c.fillStyle='rgba(214,170,40,.5)';c.fill();c.globalAlpha=w.a*.5;c.strokeStyle='rgba(150,105,10,.5)';c.lineWidth=1;c.stroke();}
   for(const f of G.fans){if(!f||f.a<=0||f.len<3)continue;const P=fanPts(f),A=f.a*al,sup=G.super>0;
     c.beginPath();P.forEach((q,i)=>i?c.lineTo(q[0],q[1]):c.moveTo(q[0],q[1]));c.closePath();
-    const g=c.createRadialGradient(f.x,f.y,1,f.x,f.y,f.len);g.addColorStop(0,sup?'rgba(190,255,225,.85)':'rgba(255,238,130,.85)');g.addColorStop(.45,sup?'rgba(110,240,190,.5)':'rgba(250,206,52,.52)');g.addColorStop(1,sup?'rgba(90,220,170,.12)':'rgba(226,176,30,.14)');
+    const g=c.createRadialGradient(f.x,f.y,1,f.x,f.y,f.len);g.addColorStop(0,sup?'rgba(190,255,225,.85)':'rgba(255,238,130,.85)');g.addColorStop(.45,sup?'rgba(110,240,190,.5)':'rgba(250,206,52,.52)');g.addColorStop(.8,sup?'rgba(100,230,180,.3)':'rgba(238,190,40,.34)');g.addColorStop(1,sup?'rgba(90,220,170,.2)':'rgba(226,176,30,.24)');
     c.globalAlpha=A;c.fillStyle=g;c.fill();c.globalAlpha=A*.75;c.strokeStyle='rgba(150,100,0,.7)';c.lineWidth=1.2;c.stroke();
     // flow lines rushing out of the apex
     c.globalAlpha=A*.7;c.strokeStyle='rgba(255,252,220,.9)';c.lineWidth=1.3;c.setLineDash([6,7]);c.lineDashOffset=-(f.ph||0)*120;
-    for(let j=0;j<5;j++){const th=f.dir-f.hw*.8+f.hw*1.6*j/4,r=f.len*(.55+.25*Math.sin(j*2.1+f.seed));c.beginPath();c.moveTo(f.x,f.y);c.quadraticCurveTo(f.x+Math.cos(th)*r*.5+Math.sin(f.ph*6+j)*2,f.y+Math.sin(th)*r*.5,f.x+Math.cos(th)*r,f.y+Math.sin(th)*r);c.stroke();}
-    c.setLineDash([]);c.globalAlpha=A;c.fillStyle='rgba(255,252,225,.9)';circ(c,f.x,f.y,3.2);c.fill();}
+    for(let j=0;j<8;j++){const th=f.dir-f.hw*.85+f.hw*1.7*j/7,r=f.len*(.55+.25*Math.sin(j*2.1+f.seed));c.beginPath();c.moveTo(f.x,f.y);c.quadraticCurveTo(f.x+Math.cos(th)*r*.5+Math.sin(f.ph*6+j)*2,f.y+Math.sin(th)*r*.5,f.x+Math.cos(th)*r,f.y+Math.sin(th)*r);c.stroke();}
+    c.setLineDash([]);
+    // glints on the wet sheet
+    c.globalAlpha=A;c.fillStyle='#fffbe6';for(let j=0;j<9;j++){const u=(j*.61+f.seed)%1,th=f.dir-f.hw*.8+f.hw*1.6*u,r=f.len*(.25+.6*((j*.37+f.seed*.7)%1)),k=.5+.5*Math.sin((f.ph||0)*11+j*1.7);if(k>.55){circ(c,f.x+Math.cos(th)*r,f.y+Math.sin(th)*r,1+1.6*k);c.fill();}}
+    c.globalAlpha=A;c.fillStyle='rgba(255,252,225,.95)';circ(c,f.x,f.y,4.5);c.fill();}
   c.restore();c.globalAlpha=1;}
 function drawAsh(c){const a=Math.min(1,G.ashT/1.5)*Math.min(1,(7-G.ashT)*3);c.save();bowlPath(c);c.clip();c.globalAlpha=.3*a;c.fillStyle='#6f6a66';let s=11;const r=()=>(s=(s*16807)%2147483647)/2147483647;
   for(let i=0;i<70;i++){const y=L.rimY+L.wallH*(.35+.6*r());const x=wallL(y)+(wallR(y)-wallL(y))*r();c.beginPath();c.ellipse(x,y,1.5+r()*4,1+r()*2.5,r()*3,0,TAU);c.fill();}c.restore();c.globalAlpha=1;}
-function drawFlush(c){const f=G.flushFx;if(!f||f.t<FL.w0)return;const t=f.t,fade=t>1.7?Math.max(0,1-(t-1.7)/1):1;if(fade<=0)return;
-  // pour from the inlet down to the rim
-  if(t<1.2){c.save();c.globalAlpha=.8*fade*Math.min(1,(1.2-t)*3);c.strokeStyle='#cdeeff';c.lineWidth=7*PL.s/0.66;c.lineCap='round';c.beginPath();c.moveTo(px(355),py(470));c.lineTo(L.cx,L.rimY+4);c.stroke();c.restore();}
-  // sheet down the walls, front starts where the rim water has arrived
-  c.save();bowlPath(c,1);c.clip();c.beginPath();c.moveTo(0,L.rimY-12);c.lineTo(W,L.rimY-12);for(let x=W;x>=0;x-=6){c.lineTo(x,flushFront(x,t)+Math.sin(x*.07+t*14)*3.5);}c.closePath();
-  const g=c.createLinearGradient(0,L.rimY,0,L.bowlBot);g.addColorStop(0,'rgba(150,222,255,.62)');g.addColorStop(1,'rgba(200,242,255,.8)');c.globalAlpha=fade;c.fillStyle=g;c.fill();c.clip();
-  // contour-following streaks: fractions across the bowl width, so they converge to the drain like real water
-  c.strokeStyle='rgba(255,255,255,.55)';c.lineWidth=1.6;c.setLineDash([14,10]);c.lineDashOffset=-t*240;
-  for(let j=0;j<11;j++){const q=(j+.5)/11;c.beginPath();for(let i=0;i<=30;i++){const y=L.rimY+i/30*L.wallH,xl=wallL(y),xr=wallR(y);c.lineTo(xl+(xr-xl)*q+Math.sin(y*.05+j)*1.5,y);}c.stroke();}
-  c.setLineDash([]);c.restore();
-  // foam edge along the front
-  c.save();bowlPath(c,1);c.clip();c.globalAlpha=.9*fade;c.strokeStyle='#ffffff';c.lineWidth=3;c.beginPath();for(let x=0;x<=W;x+=6){const y=flushFront(x,t)+Math.sin(x*.07+t*14)*3.5;x?c.lineTo(x,y):c.moveTo(x,y);}c.stroke();c.restore();
-  // rim water racing both ways around the inner rim contour
-  const fr=clamp((t-FL.w0)/FL.rim,0,1);c.save();c.globalAlpha=fade;c.lineCap='round';c.lineJoin='round';
-  for(const sd of[-1,1]){const pts=[];for(const q of L.rim){if(q.s>fr)break;pts.push([sd<0?q.x:2*L.cx-q.x,q.y]);}if(pts.length<2)continue;
-    for(const [w,col] of [[9,'rgba(120,205,255,.55)'],[4,'#eaf8ff']]){c.strokeStyle=col;c.lineWidth=w;c.beginPath();pts.forEach((q,i)=>i?c.lineTo(q[0],q[1]+2):c.moveTo(q[0],q[1]+2));c.stroke();}
-    const e=pts[pts.length-1];if(fr<1){c.fillStyle='#fff';circ(c,e[0],e[1]+2,4.5);c.fill();if(rnd()<.5)G.parts.push({k:'drop',x:e[0],y:e[1]+2,vx:rand(-30,30),vy:rand(-40,10),t:0,life:.3,r:rand(1.2,2.4),col:'#dff4ff'});}}
-  c.restore();}
+/* v5b flush sheets: thin clear water from the inlet, running both ways round the inner rim contour and down each wall, converging on the drain */
+function flHead(t){return t<FL.w0?0:Math.min(1,Math.pow((t-FL.w0)/1.05,.8));}
+function flTail(t){return t<1.55?0:Math.min(1.01,(t-1.55)/.9);}
+function flW(s){return PL.s*(s<L.rimTop?9+6*s/L.rimTop:15+30*Math.min(1,(s-L.rimTop)/(.7-L.rimTop)));}
+function flNear(x,y){const xm=x>L.cx?2*L.cx-x:x;let best=null,bd=1e9;for(const q of L.rim){const d=Math.hypot(q.x-xm,q.y-y);if(d<bd){bd=d;best=q;}}if(!best||y<L.rimY-6)return null;return {s:best.s,d:bd};}
+function flPts(sd,s0,s1,t){const R=L.rim,o=[],n=[];for(let i=1;i<R.length;i++){const q=R[i];if(q.s<s0||q.s>s1)continue;const p=R[i-1],tx=q.x-p.x,ty=q.y-p.y,l=Math.hypot(tx,ty)||1;
+    let nx=ty/l,ny=-tx/l,w=flW(q.s)*(1+.16*Math.sin(q.s*46-t*13+sd)+.08*Math.sin(q.s*97+t*7));let ix=q.x+nx*w,iy=q.y+ny*w;
+    const cv=clamp((q.s-.78)/.22,0,1);if(cv>0){const dx=(sd<0?L.drainX:2*L.cx-L.drainX)-ix,dy=L.waterY-iy;ix+=dx*cv*.55;iy+=dy*cv*.35;}
+    const X=x=>sd<0?x:2*L.cx-x;o.push([X(q.x+nx*1.5),q.y+ny*1.5]);n.push([X(ix),iy]);}return {o,n};}
+function drawFlush(c){const f=G.flushFx;if(!f||f.t<FL.w0-.12)return;const t=f.t,fade=t>2.1?Math.max(0,1-(t-2.1)/.6):1;if(fade<=0)return;const K=PL.s/.66;
+  // clear water spilling from the inlet where the flush pipe meets the urinal
+  if(t<1.7){const ix=px(355),iy=py(414),a=Math.min(1,(t-FL.w0+.12)*6)*Math.min(1,(1.7-t)*2.5);c.save();c.globalAlpha=.55*a*fade;c.lineCap='round';
+    c.strokeStyle='rgba(205,238,255,.8)';c.lineWidth=5*K;c.beginPath();c.moveTo(ix,iy);c.quadraticCurveTo(ix+2,(iy+L.rimY)/2,L.cx,L.rimY+2);c.stroke();
+    c.globalAlpha=.85*a*fade;c.strokeStyle='#fff';c.lineWidth=1.3*K;c.beginPath();c.moveTo(ix-1.5*K,iy);c.quadraticCurveTo(ix,(iy+L.rimY)/2,L.cx-1.5*K,L.rimY+2);c.stroke();c.restore();}
+  const h=flHead(t),tl=flTail(t);if(h<=tl)return;
+  c.save();bowlPath(c,1);c.clip();c.lineJoin='round';c.lineCap='round';
+  for(const sd of[-1,1]){const {o,n}=flPts(sd,tl,h,t);if(o.length<2)continue;
+    c.beginPath();o.forEach((q,i)=>i?c.lineTo(q[0],q[1]):c.moveTo(q[0],q[1]));for(let i=n.length-1;i>=0;i--)c.lineTo(n[i][0],n[i][1]);c.closePath();
+    c.globalAlpha=fade;c.fillStyle='rgba(190,230,255,.30)';c.fill();
+    // bright refraction along the porcelain edge, soft highlight on the inner wet edge
+    c.strokeStyle='rgba(255,255,255,.75)';c.lineWidth=2*K;c.beginPath();o.forEach((q,i)=>i?c.lineTo(q[0],q[1]):c.moveTo(q[0],q[1]));c.stroke();
+    c.strokeStyle='rgba(120,190,230,.55)';c.lineWidth=1.2*K;c.beginPath();n.forEach((q,i)=>i?c.lineTo(q[0],q[1]):c.moveTo(q[0],q[1]));c.stroke();
+    c.strokeStyle='rgba(255,255,255,.6)';c.lineWidth=1*K;c.beginPath();n.forEach((q,i)=>i?c.lineTo(q[0]-sd*1.5*K,q[1]-1):c.moveTo(q[0]-sd*1.5*K,q[1]-1));c.stroke();
+    // running streaks inside the sheet
+    c.setLineDash([10*K,9*K]);c.lineDashOffset=-t*220*K;for(const fr of[.3,.6]){c.strokeStyle=`rgba(255,255,255,${fr<.5?.55:.4})`;c.lineWidth=1.1*K;c.beginPath();o.forEach((q,i)=>{const x=q[0]+(n[i][0]-q[0])*fr,y=q[1]+(n[i][1]-q[1])*fr;i?c.lineTo(x,y):c.moveTo(x,y);});c.stroke();}c.setLineDash([]);
+    // small foam on the inner edge and a frothy head
+    c.fillStyle='rgba(255,255,255,.8)';for(let i=0;i<n.length;i+=3){const q=n[i],r=(1+.8*Math.sin(i*2.3+t*9))*K;if(r>.4){circ(c,q[0],q[1],r);c.fill();}}
+    if(h<1){const a=o[o.length-1],b=n[n.length-1];for(let k=0;k<5;k++){const u=k/4;circ(c,a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u+2*K,(2.2+Math.sin(t*20+k)*.8)*K);c.fill();}
+      if(rnd()<.45)G.parts.push({k:'drop',x:a[0]+(b[0]-a[0])*rnd(),y:a[1]+3,vx:rand(-25,25),vy:rand(-30,10),t:0,life:.3,r:rand(1,2),col:'#e6f6ff'});}}
+  // converging swirl over the drain
+  if(h>.9){const a=Math.min(1,(h-.9)*10)*(1-Math.max(0,tl-.6)/.4);c.globalAlpha=fade*a;ell(c,L.drainX,L.waterY,L.drainR*1.5,L.drainR*.75);c.fillStyle='rgba(190,230,255,.28)';c.fill();
+    c.strokeStyle='rgba(255,255,255,.7)';c.lineWidth=1.4*K;for(let k=0;k<3;k++){c.beginPath();c.ellipse(L.drainX,L.waterY,L.drainR*(.5+.3*k),L.drainR*(.25+.15*k),0,t*6+k*2,t*6+k*2+2.2);c.stroke();}}
+  c.restore();c.globalAlpha=1;}
 /* ---------------- HUD / UI ---------------- */
 let hudLast={};
 function hudInit(){$('hud').classList.add('on');$('bossbar').classList.remove('on');$('hLvl').textContent='Level '+curL;hudLast={};hudHearts();hudFlush();}
