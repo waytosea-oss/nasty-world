@@ -1,0 +1,21 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Bladder Brawl - Fluid Lab (test page)</title>
+<style>
+html,body{margin:0;height:100%;background:#000;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+#gl{position:fixed;inset:0;width:100vw;height:100%;display:block}
+#hud{position:fixed;left:8px;top:calc(8px + env(safe-area-inset-top));color:#fff;font:600 11px/1.35 ui-monospace,Menlo,monospace;background:rgba(0,0,0,.55);padding:5px 7px;border-radius:7px;pointer-events:none;white-space:pre}
+#score{position:fixed;right:10px;top:calc(8px + env(safe-area-inset-top));color:#ffe14d;font:800 20px/1 system-ui,sans-serif;text-shadow:0 2px 0 #000,0 0 6px #000}
+#bar{position:fixed;left:0;right:0;bottom:calc(10px + env(safe-area-inset-bottom));display:flex;gap:8px;justify-content:center}
+#bar button{font:700 13px system-ui,sans-serif;color:#fff;background:rgba(20,20,26,.78);border:1.5px solid rgba(255,255,255,.35);border-radius:18px;padding:8px 13px}
+#bar button.on{background:#ffe14d;color:#222;border-color:#ffe14d}
+#tip{position:fixed;left:0;right:0;top:44%;text-align:center;color:#fff;font:800 18px system-ui,sans-serif;text-shadow:0 2px 4px #000;pointer-events:none;transition:opacity .6s}
+#err{position:fixed;inset:30% 10% auto;color:#fff;background:#a00;padding:12px;border-radius:8px;display:none;font:14px system-ui}
+</style></head><body>
+<canvas id="gl"></canvas><canvas id="ov" style="position:fixed;inset:0;width:100vw;height:100%;pointer-events:none"></canvas>
+<div id="hud">loading…</div><div id="score">0</div>
+<div id="tip">Drag to aim. Hose the bugs!</div>
+<div id="bar"><button id="bq">Quality: Auto</button><button id="bm">Mesh</button><button id="bp">Pause</button><button id="bf" style="background:#2a8fd6;border-color:#9fe8ff">FLUSH</button></div>
+<div id="err"></div>
+<script type="module" src="main.js"></script>
+</body></html>
