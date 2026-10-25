@@ -87,3 +87,8 @@ Compared with v4:
 ## v5c (urinal fitted up, sneakers below the lip)
 - Layout fits the urinal, not the plate: flushometer just under the HUD, bottom lip at ~83% of the screen; plate scale 0.70 at 390x844 (v5: 0.677), 0.57 at 375x667 (v5: 0.556). All bowl geometry scales with L.K, so travel times are unchanged.
 - Sim (6 seeds): .35 433311-tier, wins early levels, struggles L9+ ; .6 clears all but one seed on L14; .85 clears everything. No retune needed.
+
+## v5d
+- Lip at 0.9H (bowl ~9% larger at 390x844). Toe caps only (toe5, procedural raymarch), under lip layer.
+- Liquid stream (layered edge/body/core, necking, Plateau-Rayleigh beads on long streams); wedge impact fan. Damage logic unchanged.
+- Sim: 0.35 skill slightly harder; 0.6 L14 66 / L18 50; 0.85 L14 83. No retune.

@@ -109,7 +109,7 @@ function layout(){
   const st=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sat'))||0,sb=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sab'))||0;
   L.top=st/SC+60;L.base=H-sb/SC+8;L.gusS=.8;L.feet=Math.min(96,H*.11);
   /* v5c: the urinal is fitted, not the plate: flushometer just under the HUD, bottom lip at ~83% height so the sneakers stand on the floor below it */
-  const top0=st/SC+42;let s=(H*.83-top0)/(1204-236);s=Math.min(s,W/520);s=Math.max(s,W/840);PL.s=s;PL.ox=W/2-363*s;PL.oy=top0-236*s;
+  const top0=st/SC+42;let s=(H*.9-top0)/(1204-236);s=Math.min(s,W/520);s=Math.max(s,W/840);PL.s=s;PL.ox=W/2-363*s;PL.oy=top0-236*s;
   if(PL.oy+1700*s<H){PL.oy=H-1700*s;}
   L.U={x:px(117),y:py(367),w:485*s,h:805*s};L.cx=px(363);
   L.rimY=py(515);L.spawnY=py(1025);L.bowlBot=py(1095);L.waterY=py(969);L.drainX=px(356);L.drainR=40*s;
@@ -317,31 +317,50 @@ function render(){const c=cx;c.setTransform(DPR*SC,0,0,DPR*SC,0,0);
   hudTick();
 }
 /* v5 stream: flat, constant-width golden line from the top of the screen (no taper, no blur) */
-function drawStream(c){if(!G.drops.length)return;const by={};for(const d of G.drops){if(d.dribble){circ(c,d.x,d.y,2.5);c.fillStyle='#ffe56b';c.fill();continue;}(by[d.sid]=by[d.sid]||[]).push(d);}
-  const st=stats(),sup=G.super>0;c.lineCap='round';c.lineJoin='round';
+/* v5d stream: translucent liquid, flat (no taper): dark refractive edges, pale body, travelling necking ripples, specular core; breaks into beads low down when long */
+function drawStream(c){if(!G.drops.length)return;const by={};for(const d of G.drops){if(d.dribble){circ(c,d.x,d.y,2.4);c.fillStyle='rgba(255,226,110,.7)';c.fill();continue;}(by[d.sid]=by[d.sid]||[]).push(d);}
+  const st=stats(),sup=G.super>0,T=G.t;c.lineCap='round';c.lineJoin='round';
+  const CE=sup?'rgba(30,150,110,.42)':'rgba(176,118,8,.42)',CB=sup?'rgba(160,255,215,.38)':'rgba(255,222,110,.40)',CI=sup?'rgba(225,255,240,.38)':'rgba(255,246,196,.36)';
   for(const k in by){const a=by[k].sort((p,q)=>q.seq-p.seq);const segs=[];let cur=[a[0]];for(let i=1;i<a.length;i++){if(a[i-1].seq-a[i].seq>2){segs.push(cur);cur=[];}cur.push(a[i]);}segs.push(cur);
     for(const s of segs){const z=s[s.length-1];if(z.u>.5)s.push({x:z.tx,y:z.ty,u:1,seq:z.seq-1});if(s.length<2)continue;const w=st.w*(k>0?.8:1)*1.45;
-      const path=()=>{c.beginPath();c.moveTo(s[0].x,s[0].y);for(let i=1;i<s.length;i++)c.lineTo(s[i].x,s[i].y);};
-      path();c.globalAlpha=.55;c.strokeStyle='#6b4300';c.lineWidth=w+2.4;c.stroke();
-      c.globalAlpha=.95;c.strokeStyle=sup?'#6dffc0':'#ffc61f';c.lineWidth=w;c.stroke();
-      c.globalAlpha=.85;c.strokeStyle=sup?'#eafff6':'#fff1a0';c.lineWidth=w*.28;c.save();c.translate(-w*.18,0);path();c.stroke();c.restore();c.globalAlpha=1;}}}
-function fanPts(f){const n=34,P=[],sd=f.seed,t=f.ph||0,L0=f.len;
-  for(let i=0;i<=6;i++){const th=f.dir+f.hw+(Math.PI*2-2*f.hw)*i/6;P.push([f.x+Math.cos(th)*L0*.1,f.y+Math.sin(th)*L0*.1]);}
-  for(let i=n;i>=0;i--){const u=i/n,th=f.dir-f.hw+2*f.hw*u+.05*Math.sin(u*7+t*4+sd);const nz=.8+.11*Math.sin(u*6.3+sd+t*5)+.07*Math.sin(u*13.7-t*8+sd*2)+.035*Math.sin(u*29+t*13);
-    const r=L0*nz*(.5+.5*Math.pow(Math.sin(Math.PI*u),.55));P.push([f.x+Math.cos(th)*r,f.y+Math.sin(th)*r]);}return P;}
+      const len=Math.hypot(s[0].x-s[s.length-1].x,s[0].y-s[s.length-1].y),brk=len>H*.45?.93:1.1;
+      const wid=i=>w*(1+.17*Math.sin(T*26-(s[i].seq||0)*.85)+.06*Math.sin(T*61-(s[i].seq||0)*2.1));
+      const layer=(col,mul,off,dash)=>{c.strokeStyle=col;for(let i=1;i<s.length;i++){if((s[i].u||0)>brk)break;c.lineWidth=wid(i)*mul;c.beginPath();c.moveTo(s[i-1].x+off,s[i-1].y);c.lineTo(s[i].x+off,s[i].y);c.stroke();}};
+      layer(CE,1.18,0);layer(CB,1,0);layer(CI,.55,-w*.08);
+      // specular core + glints travelling down
+      c.strokeStyle='rgba(255,255,255,.75)';c.lineWidth=Math.max(1,w*.16);c.setLineDash([w*1.6,w*1.1]);c.lineDashOffset=-T*900;c.beginPath();let on=false;
+      for(let i=0;i<s.length;i++){if((s[i].u||0)>brk)break;const x=s[i].x-w*.22,y=s[i].y;on?c.lineTo(x,y):c.moveTo(x,y);on=true;}c.stroke();c.setLineDash([]);
+      c.strokeStyle='rgba(255,255,255,.28)';c.lineWidth=Math.max(.8,w*.1);c.beginPath();on=false;for(let i=0;i<s.length;i++){if((s[i].u||0)>brk)break;const x=s[i].x+w*.3,y=s[i].y;on?c.lineTo(x,y):c.moveTo(x,y);on=true;}c.stroke();
+      // Plateau-Rayleigh breakup: beads near the bottom of a long stream
+      if(brk<1){let acc=0,n=0;for(let i=1;i<s.length;i++){const p=s[i-1],d=s[i];if((d.u||0)<=brk)continue;const sl=Math.hypot(d.x-p.x,d.y-p.y);acc+=sl;
+        const step=w*1.7;while(acc>step){acc-=step;const q=1-acc/Math.max(1,sl),x=p.x+(d.x-p.x)*q,y=p.y+(d.y-p.y)*q;n++;const r=w*(.36+.14*Math.sin(n*1.9+T*20));
+          c.fillStyle=CE;circ(c,x,y,r+1);c.fill();c.fillStyle=CB;circ(c,x,y,r);c.fill();c.fillStyle='rgba(255,255,255,.8)';circ(c,x-r*.35,y-r*.35,Math.max(.8,r*.3));c.fill();}}}
+      c.globalAlpha=1;}}}
+function fanPts(f){const n=40,P=[[f.x,f.y]],sd=f.seed,t=f.ph||0,L0=f.len;
+  for(let i=0;i<=n;i++){const u=i/n,th=f.dir-f.hw+2*f.hw*u+.04*Math.sin(u*7+t*4+sd);const nz=.86+.08*Math.sin(u*6.3+sd+t*5)+.05*Math.sin(u*13.7-t*8+sd*2)+.03*Math.sin(u*31+t*13);
+    const r=L0*nz*(.62+.38*Math.pow(Math.sin(Math.PI*u),.45));P.push([f.x+Math.cos(th)*r,f.y+Math.sin(th)*r]);}return P;}
 function drawFans(c,al){let any=!!(G.wet&&G.wet.length&&al>.9);for(const f of G.fans)if(f&&f.a>0)any=true;if(!any)return;c.save();bowlPath(c,2);c.clip();
   if(al>.9&&G.wet)for(const w of G.wet){c.beginPath();w.P.forEach((q,i)=>i?c.lineTo(q[0],q[1]):c.moveTo(q[0],q[1]));c.closePath();c.globalAlpha=w.a*.55;c.fillStyle='rgba(214,170,40,.5)';c.fill();c.globalAlpha=w.a*.5;c.strokeStyle='rgba(150,105,10,.5)';c.lineWidth=1;c.stroke();}
-  for(const f of G.fans){if(!f||f.a<=0||f.len<3)continue;const P=fanPts(f),A=f.a*al,sup=G.super>0;
+  for(const f of G.fans){if(!f||f.a<=0||f.len<3)continue;const P=fanPts(f),A=f.a*al,sup=G.super>0,ph=f.ph||0;
+    // translucent liquid sheet: dense at the pointed apex, thinning toward the beaded outer edge
     c.beginPath();P.forEach((q,i)=>i?c.lineTo(q[0],q[1]):c.moveTo(q[0],q[1]));c.closePath();
-    const g=c.createRadialGradient(f.x,f.y,1,f.x,f.y,f.len);g.addColorStop(0,sup?'rgba(190,255,225,.85)':'rgba(255,238,130,.85)');g.addColorStop(.45,sup?'rgba(110,240,190,.5)':'rgba(250,206,52,.52)');g.addColorStop(.8,sup?'rgba(100,230,180,.3)':'rgba(238,190,40,.34)');g.addColorStop(1,sup?'rgba(90,220,170,.2)':'rgba(226,176,30,.24)');
-    c.globalAlpha=A;c.fillStyle=g;c.fill();c.globalAlpha=A*.75;c.strokeStyle='rgba(150,100,0,.7)';c.lineWidth=1.2;c.stroke();
-    // flow lines rushing out of the apex
-    c.globalAlpha=A*.7;c.strokeStyle='rgba(255,252,220,.9)';c.lineWidth=1.3;c.setLineDash([6,7]);c.lineDashOffset=-(f.ph||0)*120;
-    for(let j=0;j<8;j++){const th=f.dir-f.hw*.85+f.hw*1.7*j/7,r=f.len*(.55+.25*Math.sin(j*2.1+f.seed));c.beginPath();c.moveTo(f.x,f.y);c.quadraticCurveTo(f.x+Math.cos(th)*r*.5+Math.sin(f.ph*6+j)*2,f.y+Math.sin(th)*r*.5,f.x+Math.cos(th)*r,f.y+Math.sin(th)*r);c.stroke();}
+    const g=c.createRadialGradient(f.x,f.y,0,f.x,f.y,f.len);
+    if(sup){g.addColorStop(0,'rgba(220,255,240,.75)');g.addColorStop(.35,'rgba(140,245,200,.42)');g.addColorStop(1,'rgba(100,225,175,.08)');}
+    else{g.addColorStop(0,'rgba(255,248,200,.78)');g.addColorStop(.3,'rgba(255,224,110,.46)');g.addColorStop(.75,'rgba(240,196,60,.22)');g.addColorStop(1,'rgba(230,180,40,.07)');}
+    c.globalAlpha=A;c.fillStyle=g;c.fill();
+    // darker refractive outer lip
+    c.globalAlpha=A*.55;c.strokeStyle=sup?'rgba(40,140,100,.6)':'rgba(150,100,10,.55)';c.lineWidth=1.4;c.beginPath();for(let i=1;i<P.length;i++)i>1?c.lineTo(P[i][0],P[i][1]):c.moveTo(P[i][0],P[i][1]);c.stroke();
+    // sharp side edges catching light
+    c.globalAlpha=A*.8;c.strokeStyle='rgba(255,252,230,.85)';c.lineWidth=1;for(const e of[1,P.length-1]){c.beginPath();c.moveTo(f.x,f.y);c.lineTo(P[e][0],P[e][1]);c.stroke();}
+    // streaks radiating from the apex, sliding outward
+    c.strokeStyle='rgba(255,253,235,.5)';c.lineWidth=.9;c.setLineDash([9,6]);c.lineDashOffset=-ph*140;
+    for(let j=0;j<9;j++){const u=(j+.5)/9,th=f.dir-f.hw*.92+f.hw*1.84*u,r=f.len*(.55+.3*Math.sin(j*2.1+f.seed));c.globalAlpha=A*(.45+.35*Math.sin(j*1.3+ph*3));c.beginPath();c.moveTo(f.x,f.y);c.lineTo(f.x+Math.cos(th)*r,f.y+Math.sin(th)*r);c.stroke();}
     c.setLineDash([]);
-    // glints on the wet sheet
-    c.globalAlpha=A;c.fillStyle='#fffbe6';for(let j=0;j<9;j++){const u=(j*.61+f.seed)%1,th=f.dir-f.hw*.8+f.hw*1.6*u,r=f.len*(.25+.6*((j*.37+f.seed*.7)%1)),k=.5+.5*Math.sin((f.ph||0)*11+j*1.7);if(k>.55){circ(c,f.x+Math.cos(th)*r,f.y+Math.sin(th)*r,1+1.6*k);c.fill();}}
-    c.globalAlpha=A;c.fillStyle='rgba(255,252,225,.95)';circ(c,f.x,f.y,4.5);c.fill();}
+    // refraction-ish highlight arcs
+    c.globalAlpha=A*.6;c.strokeStyle='rgba(255,255,255,.7)';c.lineWidth=1.4;for(const q of[.38,.62]){c.beginPath();c.arc(f.x,f.y,f.len*q,f.dir-f.hw*.55+Math.sin(ph*2+q*9)*.1,f.dir+f.hw*.25+Math.sin(ph*2+q*9)*.1);c.stroke();}
+    // beads along the outer rim
+    for(let i=2;i<P.length-1;i+=2){const k=.5+.5*Math.sin(i*2.7+ph*9+f.seed);if(k<.25)continue;const r=1+1.8*k;c.globalAlpha=A*.75;c.fillStyle=sup?'rgba(170,255,220,.7)':'rgba(255,226,120,.75)';circ(c,P[i][0],P[i][1],r);c.fill();c.globalAlpha=A;c.fillStyle='rgba(255,255,255,.85)';circ(c,P[i][0]-r*.3,P[i][1]-r*.3,r*.35);c.fill();}
+    c.globalAlpha=A;c.fillStyle='rgba(255,255,255,.95)';circ(c,f.x,f.y,2.2);c.fill();}
   c.restore();c.globalAlpha=1;}
 function drawAsh(c){const a=Math.min(1,G.ashT/1.5)*Math.min(1,(7-G.ashT)*3);c.save();bowlPath(c);c.clip();c.globalAlpha=.3*a;c.fillStyle='#6f6a66';let s=11;const r=()=>(s=(s*16807)%2147483647)/2147483647;
   for(let i=0;i<70;i++){const y=L.rimY+L.wallH*(.35+.6*r());const x=wallL(y)+(wallR(y)-wallL(y))*r();c.beginPath();c.ellipse(x,y,1.5+r()*4,1+r()*2.5,r()*3,0,TAU);c.fill();}c.restore();c.globalAlpha=1;}

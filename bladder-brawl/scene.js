@@ -15,9 +15,9 @@ const SCN=(function(){
   const U=()=>L.U;
   // ---------- geometry ----------
   // sneakers stand on the floor in the bottom corners (toes toward the urinal, jeans hems running off-screen)
-  function footGeo(f){const x=f.side<0?W*.17:W*.83,lp=Math.max(lipAt(x),L.lipY-PL.s*140);const h=clamp((H-lp)/.56,170,330),w=h*274/520;
-    // toes tucked ~14% of the shoe height under the urinal's front lip
-    return {x,base:lp-h*.14+h,h,w,lip:lp};}
+  function footGeo(f){const x=W/2+f.side*W*.19,lp=Math.max(lipAt(x),L.lipY-PL.s*60);const w=clamp(W*.26,84,118),h=w*581/288;
+    // v5d: only the toe caps peek out, ~30% of the cap tucked under the urinal's front lip; the rest runs off the bottom edge
+    return {x,base:lp-h*.15+h,h,w,lip:lp};}
   function pipeGeo(){const s=PL.s;return {x:px(400),bot:py(300),h:150*s,w:200*s,top:py(215),lx:px(461),ly:py(296)};}
   function phonePos(){return {x:px(208),y:py(482),h:Math.max(34,112*PL.s)};}
   function canHome(){return {x:px(512),y:py(496),h:Math.max(52,168*PL.s)};}
@@ -94,12 +94,12 @@ const SCN=(function(){
       if(bz){c.strokeStyle='#9fe8ff';c.lineWidth=2;for(const s of [-1,1]){c.beginPath();c.arc(0,-ph.h*.5,ph.h*.55+3*Math.sin(S.t*20),s<0?Math.PI*.8:-Math.PI*.2,s<0?Math.PI*1.2:Math.PI*.2);c.stroke();}}
       c.restore();}
   }
-  function shoeCanvas(f){const k=f.side+'|'+f.wet;if(S.cache[k])return S.cache[k];const im=SPR.I.shoe5;if(!SPR.ok('shoe5'))return null;
-    const w=220,h=418,cv=document.createElement('canvas');cv.width=w;cv.height=h;const x=cv.getContext('2d');
+  function shoeCanvas(f){const k=f.side+'|'+f.wet;if(S.cache[k])return S.cache[k];const im=SPR.I.toe5;if(!SPR.ok('toe5'))return null;
+    const w=288,h=581,cv=document.createElement('canvas');cv.width=w;cv.height=h;const x=cv.getContext('2d');
     if(f.side<0){x.translate(w,0);x.scale(-1,1);}x.drawImage(im,0,0,w,h);x.setTransform(1,0,0,1,0,0);
     if(f.wet>0){x.globalCompositeOperation='source-atop';let s=7+f.side*3;const rr=()=>{s=(s*16807)%2147483647;return s/2147483647;};
       for(let i=0;i<f.wet*3;i++){x.globalAlpha=.12+.035*f.wet;x.fillStyle=i%3?'#9a7c18':'#5e4a0c';x.beginPath();x.ellipse(w*(.25+rr()*.5),h*(.04+rr()*.36),12+rr()*16+f.wet*3,8+rr()*10+f.wet*2,rr()*3,0,6.283);x.fill();}
-      x.globalAlpha=.25;x.fillStyle='#fff8c0';for(let i=0;i<f.wet*2;i++){x.beginPath();x.arc(w*(.3+rr()*.4),h*(.05+rr()*.3),2+rr()*2,0,6.283);x.fill();}}
+      x.globalAlpha=.25;x.fillStyle='#fff8c0';for(let i=0;i<f.wet*2;i++){x.beginPath();x.arc(w*(.3+rr()*.4),h*(.18+rr()*.2),2+rr()*2,0,6.283);x.fill();}}
     S.cache[k]=cv;return cv;}
   function footPose(f){const t=S.t,sd=f.side;let dx=0,dy=0,rot=-sd*.16,sc=1;const e=S.ev,cap=stats().cap,low=G.bladder<cap*.22;
     if(e&&e.k==='win'){dx=Math.sin(t*9+(sd>0?Math.PI:0))*7;dy=-Math.abs(Math.sin(t*9+(sd>0?Math.PI:0)))*10;rot+=Math.sin(t*9)*.08;}
@@ -113,8 +113,8 @@ const SCN=(function(){
     else if(sd>0){const b=(t*2.1)%1;dy=b<.18?-6*Math.sin(b/.18*Math.PI):0;rot+=dy*.006;}
     if(f.jerk>=0&&f.jerk<.9){const k=1-f.jerk/.9;dy-=30*Math.sin(Math.min(1,f.jerk/.25)*Math.PI*.5)*k;dx+=Math.sin(f.jerk*48)*6*k;rot+=Math.sin(f.jerk*40)*.12*k;}
     return {dx,dy,rot,sc};}
-  function drawFeet(c){for(const f of S.feet){const g=footGeo(f),p=footPose(f),cv=shoeCanvas(f);c.save();c.translate(g.x+p.dx,g.base+p.dy);c.rotate(p.rot);c.scale(p.sc,p.sc);
-      c.globalAlpha=.35;c.fillStyle='#000';c.beginPath();c.ellipse(0,-g.h*.5,g.w*.5,g.h*.5,0,0,6.283);c.fill();c.globalAlpha=1;
+  function drawFeet(c){for(const f of S.feet){const g=footGeo(f),p=footPose(f),cv=shoeCanvas(f);c.save();const k=g.w/300;c.translate(g.x+p.dx*k,g.base+p.dy*k);c.rotate(p.rot*.2);c.scale(p.sc,p.sc);
+      c.globalAlpha=.4;c.fillStyle='#000';c.beginPath();c.ellipse(0,-g.h*.5+4,g.w*.54,g.h*.51,0,0,6.283);c.fill();c.globalAlpha=1;
       if(cv)c.drawImage(cv,-g.w/2,-g.h,g.w,g.h);
       if(f.wet>0&&Math.random()<.02*f.wet)G.parts.push({k:'drop',x:g.x+p.dx+(Math.random()-.5)*g.w*.4,y:g.base-g.h*.8,vx:0,vy:40,t:0,life:.5,r:2,col:'#e8c94a'});
       c.restore();}}
