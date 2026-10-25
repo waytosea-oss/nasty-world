@@ -124,6 +124,7 @@ canvas#cv{position:absolute;left:0;top:0;display:block}
 @keyframes sp{0%{transform:scale(0)}100%{transform:scale(1)}}
 .earn{display:flex;align-items:center;justify-content:center;gap:8px;font-family:"Lilita One";font-size:26px;margin:2px 0 6px}
 .togs{display:flex;gap:10px;justify-content:center;margin-top:14px}
+.aimsel{display:flex;gap:6px;justify-content:center;align-items:center;margin-top:14px;font-weight:800;color:#fff}.aimsel span{margin-right:4px;font-size:14px}.aimsel button{font:inherit;font-size:14px;padding:7px 12px;border-radius:12px;border:2px solid #2a1a2e;background:#d9d2c3;color:#2a1a2e;cursor:pointer}.aimsel button.on{background:#ffd23f;box-shadow:0 0 0 2px #fff inset}.aimhelp{font-size:11px;opacity:.75;margin-top:6px;color:#fff;max-width:280px;margin-left:auto;margin-right:auto}
 .tipArt{width:100%;height:150px}
 #toast{position:absolute;left:50%;top:20%;transform:translateX(-50%);background:rgba(0,0,0,.8);padding:10px 16px;border-radius:14px;font-weight:600;z-index:30;display:none;white-space:nowrap;font-size:14px}
 #loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:50;background:#1d1530;transition:opacity .3s}#loading.off{opacity:0;pointer-events:none}
@@ -159,7 +160,7 @@ canvas#cv{position:absolute;left:0;top:0;display:block}
  <div class="wnav"><button class="arrow" id="wPrev">‹</button><div style="text-align:center;min-width:220px"><div class="wtitle" id="wName"></div><div class="wsub" id="wSub"></div></div><button class="arrow" id="wNext">›</button></div>
  <div class="wcard" id="wGrid"></div>
  <div class="dots" id="wDots"></div>
- <div class="help">Hold and drag to aim. Don’t let the bugs climb over the rim! Tap the flush valve on the pipe to flush.</div>
+ <div class="help">Hold and drag anywhere to aim (trackpad style; switch aim mode in Pause). Don’t let the bugs climb over the rim! Tap the flush valve on the pipe to flush.</div>
  <button class="btn orange" id="bShop2">Upgrades</button>
 </div>
 
@@ -188,6 +189,8 @@ canvas#cv{position:absolute;left:0;top:0;display:block}
 <div class="scr dim" id="pause">
  <div class="panel"><h2>Paused</h2><div class="sub" id="pSub">Level 1</div>
   <div class="col"><button class="btn" id="bResume">Resume</button><button class="btn orange" id="bRestart">Restart</button><button class="btn gray" id="bQuit">Level select</button><button class="btn hub" id="bHubP">Back to Nasty World</button></div>
+  <div class="aimsel"><span>Aim</span><button data-aim="relative">Pad</button><button data-aim="offset">Offset</button><button data-aim="direct">Direct</button></div>
+  <div class="aimhelp">Pad: drag anywhere like a trackpad · Offset: aim floats above your finger · Direct: aim under your finger</div>
   <div class="togs"><button class="ibtn t-mus"></button><button class="ibtn t-sfx"></button><button class="ibtn t-vib"></button></div>
  </div>
 </div>
@@ -225,6 +228,7 @@ canvas#cv{position:absolute;left:0;top:0;display:block}
 <script src="sprites.js"></script>
 <script src="scene.js"></script>
 <script src="game.js"></script>
+<script type="module" src="fluid.js"></script>
 <script src="mascot.js"></script>
 </body>
 </html>
