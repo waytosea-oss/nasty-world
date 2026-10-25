@@ -229,6 +229,7 @@ function emitterOrigin(t) {
   return ORIG;
 }
 function emit(dt, t) {
+  flowOn = AUTO || !everTouch || dragId !== null;
   if (!flowOn || flushT > 0) { lastO = null; return; } // flush: the stream pauses so the clear sheet reads clean
   const L = LEVELS[qi];
   aim.x += (aim.tx - aim.x) * Math.min(1, dt * 14); aim.y += (aim.ty - aim.y) * Math.min(1, dt * 14); aim.z += (aim.tz - aim.z) * Math.min(1, dt * 14);
@@ -483,11 +484,12 @@ function initGL() {
         col += jf*vec3(1.,0.96,0.80)*0.28*smoothstep(0.55,1.0,ndv); // bright glassy core of the jet
         col += vec3(0.05,0.04,0.0)*smoothstep(0.4,0.0,ndv)*jf;
         // jet: lively clear amber - lighter core, darker amber rim, strong highlights
-        vec3 jt=mix(vec3(0.88,0.70,0.30),vec3(1.0,0.96,0.78),smoothstep(0.15,0.85,ndv));
-        vec3 jcol=refr*jt*1.04 + vec3(0.10,0.07,0.0)*smoothstep(0.5,1.,ndv) + spec*vec3(1.,0.98,0.9)*2.4
-                 + vec3(1.,0.95,0.75)*0.22*smoothstep(0.75,1.0,ndv) + env*fres*0.5;
+        vec3 jt=mix(vec3(0.97,0.90,0.52),vec3(1.0,0.97,0.70),smoothstep(0.1,0.7,ndv));
+        float glint=0.75+0.5*sin(vUv.y*620.+vUv.x*90.)*sin(vUv.y*170.-vUv.x*40.);
+        vec3 jcol=refr*jt*1.05 + vec3(0.075,0.07,0.0) + spec*glint*vec3(1.,0.99,0.95)*2.6
+                 + vec3(1.,0.98,0.88)*0.10*smoothstep(0.8,1.0,ndv) + vec3(0.92,0.94,0.97)*fres*0.5;
         col=mix(col,jcol,jf);
-        float a=mix(smoothstep(0.10,0.55,th),smoothstep(0.01,0.25,th),jf)*mix(mix(0.45,0.7,1.-pf),0.74,jf); col+=spec*vec3(1.,0.98,0.9)*0.6*(1.-jf);
+        float a=mix(smoothstep(0.10,0.55,th),smoothstep(0.02,0.5,th),jf)*mix(mix(0.45,0.7,1.-pf),0.6,jf); col+=spec*vec3(1.,0.98,0.9)*0.6*(1.-jf);
         gl_FragColor=vec4(mix(base,col,a),1.);
       }`,
     depthTest: false, depthWrite: false,
@@ -544,6 +546,10 @@ function drawBG(dt) {
     if (!B.dead) { const bw = Math.max(26, w * 0.9); c.globalAlpha = 1; c.fillStyle = 'rgba(0,0,0,.65)'; c.fillRect(-bw / 2 - 1, -h * 0.62 - 6, bw + 2, 6); c.fillStyle = B.hp / B.max > 0.4 ? '#7CFC4A' : '#ff5a3c'; c.fillRect(-bw / 2, -h * 0.62 - 5, bw * Math.max(0, B.hp / B.max), 4); }
     c.restore();
   }
+  if (!AUTO && everTouch) { const [rx, ry] = curAimScreen(); const on = dragId !== null;
+    c.globalAlpha = on ? 0.95 : 0.5; c.strokeStyle = '#fff'; c.lineWidth = 2; c.beginPath(); c.arc(rx, ry, 11, 0, 6.283); c.stroke();
+    c.beginPath(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { c.moveTo(rx + dx * 6, ry + dy * 6); c.lineTo(rx + dx * 17, ry + dy * 17); } c.stroke();
+    c.strokeStyle = 'rgba(0,0,0,0.6)'; c.lineWidth = 1; c.beginPath(); c.arc(rx, ry, 13, 0, 6.283); c.stroke(); c.globalAlpha = 1; }
   bgTex.needsUpdate = true;
   c = ovx; c.clearRect(0, 0, W, H);
   for (let i = POPS.length - 1; i >= 0; i--) { const p = POPS[i]; p.t += dt; if (p.t > 0.4) { POPS.splice(i, 1); continue; } const [sx, sy] = toScreen(p.p); const r = p.r * pxPerM(p.p) * (1 + p.t * 6); c.strokeStyle = `rgba(255,240,150,${1 - p.t / 0.4})`; c.lineWidth = 3; c.beginPath(); c.arc(sx, sy, r, 0, 6.283); c.stroke(); }
@@ -556,7 +562,7 @@ let showMesh = !!Q.get('mesh');
 function render() {
   const n = P.n, pos = pGeo.attributes.position.array, gen = pGeo.attributes.gen.array, szA = pGeo.attributes.sz.array;
   let m = 0, ms = 0; const spA = spGeo.attributes.position.array;
-  for (let i = 0; i < n; i++) { if (!P.water[i] && P.gen[i] && P.vx[i] * P.vx[i] + P.vy[i] * P.vy[i] + P.vz[i] * P.vz[i] > 0.06) { if (visible(P.x[i], P.y[i], P.z[i])) { spA[ms * 3] = P.x[i]; spA[ms * 3 + 1] = P.y[i]; spA[ms * 3 + 2] = P.z[i]; ms++; } continue; }
+  for (let i = 0; i < n; i++) { if (!P.water[i] && P.gen[i]) { if (visible(P.x[i], P.y[i], P.z[i])) { spA[ms * 3] = P.x[i]; spA[ms * 3 + 1] = P.y[i]; spA[ms * 3 + 2] = P.z[i]; ms++; } continue; }
     if ((P.x[i] - CX) * FWD.x + (P.y[i] - CY) * FWD.y + (P.z[i] - CZ) * FWD.z < 0.13 || !visible(P.x[i], P.y[i], P.z[i])) continue; pos[m * 3] = P.x[i]; pos[m * 3 + 1] = P.y[i]; pos[m * 3 + 2] = P.z[i]; gen[m] = (P.gen[i] ? 1 : (P.touched[i] ? 0 : 2)) + (P.water[i] ? 4 : 0); szA[m] = (!P.water[i] && P.touched[i] && !P.gen[i]) ? Math.max(0.3, 1 - Math.max(0, P.age[i] - 0.7) / 1.9) * Math.min(1, 0.25 + P.rho[i] / RHO0 * 0.6) : 1; m++;
     if (!P.touched[i] && !P.water[i]) { // airborne jet: gap-fill splats back along the path -> continuous, organic column
       for (let k = 1; k <= 3; k++) { const f = k / 4 / 120; pos[m * 3] = P.x[i] - P.vx[i] * f; pos[m * 3 + 1] = P.y[i] - P.vy[i] * f; pos[m * 3 + 2] = P.z[i] - P.vz[i] * f; gen[m] = 2; szA[m] = 0.9 + 0.2 * Math.sin(i * 2.3 + k); m++; }
@@ -680,10 +686,42 @@ function aimAt(clientX, clientY) {
     prev = t;
   }
 }
-let dragging = false;
-canvas.addEventListener('pointerdown', e => { dragging = true; aimAt(e.clientX, e.clientY); $('tip').style.opacity = 0; });
-window.addEventListener('pointermove', e => { if (dragging) aimAt(e.clientX, e.clientY); });
-window.addEventListener('pointerup', () => dragging = false);
+// aim modes: 'relative' (default, trackpad: finger delta x1.3 moves the aim, touch anywhere, no jump),
+// 'offset' (aim sits 90px above the finger), 'direct' (aim under the pointer, v1 behaviour). ?aim=relative|offset|direct
+const AIMS = ['relative', 'offset', 'direct'];
+let aimMode = AIMS.includes(Q.get('aim')) ? Q.get('aim') : 'relative';
+let dragId = null, lastPX = 0, lastPY = 0, AX = 0, AY = 0, touchFlow = false, everTouch = false;
+const GAIN = 1.3, OFFY = 90, AIML = { relative: 'Pad', offset: 'Offset', direct: 'Direct' };
+function aimBounds() { // screen-space box of the bowl opening, used to clamp the reticle
+  const a = toScreen(new THREE.Vector3(C.x - R[0] * 0.92, 0.16, C.z)), b = toScreen(new THREE.Vector3(C.x + R[0] * 0.92, 0.16, C.z));
+  const t = toScreen(new THREE.Vector3(C.x, 0.12, C.z + R[2] * 0.8)), u = toScreen(new THREE.Vector3(C.x, 0.2, C.z - R[2] * 0.92));
+  return [Math.min(a[0], b[0]), Math.max(a[0], b[0]), Math.min(t[1], u[1]), Math.max(t[1], u[1])];
+}
+function setAimScreen(x, y) { const bb = aimBounds(); AX = Math.min(bb[1], Math.max(bb[0], x)); AY = Math.min(bb[3], Math.max(bb[2], y)); aimAt(AX, AY); }
+function curAimScreen() { const p = toScreen(new THREE.Vector3(aim.x, aim.y, aim.z)); return [p[0], p[1]]; }
+function pDown(e) {
+  if (dragId !== null || e.target.closest && e.target.closest('#bar')) return; // multitouch-safe: first finger owns the aim
+  dragId = e.pointerId; lastPX = e.clientX; lastPY = e.clientY; everTouch = true; touchFlow = true; $('tip').style.opacity = 0;
+  if (aimMode === 'relative') { [AX, AY] = curAimScreen(); }
+  else if (aimMode === 'offset') setAimScreen(e.clientX, e.clientY - OFFY);
+  else setAimScreen(e.clientX, e.clientY);
+  e.preventDefault();
+}
+function pMove(e) {
+  if (e.pointerId !== dragId) return;
+  if (aimMode === 'relative') setAimScreen(AX + (e.clientX - lastPX) * GAIN, AY + (e.clientY - lastPY) * GAIN);
+  else if (aimMode === 'offset') setAimScreen(e.clientX, e.clientY - OFFY);
+  else setAimScreen(e.clientX, e.clientY);
+  lastPX = e.clientX; lastPY = e.clientY; e.preventDefault();
+}
+function pUp(e) { if (e.pointerId !== dragId) return; dragId = null; touchFlow = false; }
+window.addEventListener('pointerdown', pDown, { passive: false });
+window.addEventListener('pointermove', pMove, { passive: false });
+window.addEventListener('pointerup', pUp); window.addEventListener('pointercancel', pUp);
+for (const ev of ['touchstart', 'touchmove']) document.addEventListener(ev, e => { if (!(e.target.closest && e.target.closest('#bar'))) e.preventDefault(); }, { passive: false });
+$('ba').textContent = 'Aim: ' + AIML[aimMode];
+$('ba').onclick = () => { aimMode = AIMS[(AIMS.indexOf(aimMode) + 1) % AIMS.length]; $('ba').textContent = 'Aim: ' + AIML[aimMode]; };
+window.__aimst = () => ({ mode: aimMode, AX, AY, aim: [aim.x, aim.y, aim.z], flow: flowOn, scr: curAimScreen() });
 const QN = ['Auto', 'Low', 'Med', 'High', 'Ultra'];
 let qSel = qAuto ? 0 : qi + 1;
 $('bq').textContent = 'Quality: ' + QN[qSel];
