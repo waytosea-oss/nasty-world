@@ -2,9 +2,9 @@
 'use strict';
 const SPR=(function(){
   const webp=(()=>{try{return document.createElement('canvas').toDataURL('image/webp').indexOf('data:image/webp')===0}catch(e){return false}})();
-  const I={},names=['plate5','shoe5','can5','hand-press','hand-grip','lever5','leverbg5','phone','cake','hero-front','en-roach','en-fly','en-mosq','en-maggot','en-snail','en-gecko','en-spider','boss-fly','boss-snail','boss-spider'];
+  const I={},names=['plate5c','lip5','shoe5','can5','hand-press','hand-grip','lever5','leverbg5','phone','cake','hero-front','en-roach','en-fly','en-mosq','en-maggot','en-snail','en-gecko','en-spider','boss-fly','boss-snail','boss-spider'];
   let left=names.length;const waiters=[];
-  for(const n of names){const im=new Image();const jpg=n.startsWith('wall-')||n==='plate5';im.onload=im.onerror=()=>{if(--left===0)waiters.splice(0).forEach(f=>f());};
+  for(const n of names){const im=new Image();const jpg=n.startsWith('wall-')||n==='plate5c';im.onload=im.onerror=()=>{if(--left===0)waiters.splice(0).forEach(f=>f());};
     im.src='art/'+n+(webp?'.webp':(jpg?'.jpg':'.png'));I[n]=im;}
   const ok=n=>I[n]&&I[n].complete&&I[n].naturalWidth>0;
   const MAP={mosq:['en-mosq',2.9],fly:['en-fly',2.5],ant:['en-maggot',2.6],roach:['en-roach',2.7],snail:['en-snail',2.7],gecko:['en-gecko',3.2],baby:['en-spider',2.4],

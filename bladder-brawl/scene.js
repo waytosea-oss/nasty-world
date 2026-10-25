@@ -15,7 +15,9 @@ const SCN=(function(){
   const U=()=>L.U;
   // ---------- geometry ----------
   // sneakers stand on the floor in the bottom corners (toes toward the urinal, jeans hems running off-screen)
-  function footGeo(f){const h=Math.min(300,H*.3),w=h*274/520;return {x:f.side<0?W*.16:W*.84,base:H+h*.36,h,w};}
+  function footGeo(f){const x=f.side<0?W*.17:W*.83,lp=Math.max(lipAt(x),L.lipY-PL.s*140);const h=clamp((H-lp)/.56,170,330),w=h*274/520;
+    // toes tucked ~14% of the shoe height under the urinal's front lip
+    return {x,base:lp-h*.14+h,h,w,lip:lp};}
   function pipeGeo(){const s=PL.s;return {x:px(400),bot:py(300),h:150*s,w:200*s,top:py(215),lx:px(461),ly:py(296)};}
   function phonePos(){return {x:px(208),y:py(482),h:Math.max(34,112*PL.s)};}
   function canHome(){return {x:px(512),y:py(496),h:Math.max(52,168*PL.s)};}
@@ -45,7 +47,7 @@ const SCN=(function(){
     // fly-target sticker (does not consume: the stream still hits bugs)
     const tg=S.target;if(tg.on>0&&near(x,y,tg,20)){tg.hit+=1;if(tg.hit>=10){tg.on=0;G.earned+=6;pop(tg.x,tg.y-30,'BULLSEYE! +6','#ffd23a',20,1.1);sfx('ding');burst(tg.x,tg.y,14,'#ffd23a',220);}}
     // sneakers
-    for(const f of S.feet){const g=footGeo(f);if(Math.abs(x-g.x)<g.w*.62&&y>g.base-g.h*1.02){const sx=g.x+(Math.random()-.5)*g.w*.4,sy=g.base-g.h*(.72+Math.random()*.22);
+    for(const f of S.feet){const g=footGeo(f);if(Math.abs(x-g.x)<g.w*.62&&y>g.base-g.h*1.02&&y>lipAt(x)){const sx=g.x+(Math.random()-.5)*g.w*.4,sy=g.base-g.h*(.72+Math.random()*.22);
       for(let i=0;i<3;i++)G.parts.push({k:'drop',x,y,vx:(sx-x)/.35+(Math.random()-.5)*40,vy:(sy-y)/.35-140,t:0,life:.35,r:2.2,col:'#ffe56b'});burst(x,y,3,'#ffe56b',90);
       if(!S.pend)S.pend={f,t:.3,x:sx,y:sy};return true;}}
     // inside the urinal or on the rim: normal gameplay
@@ -160,7 +162,7 @@ const SCN=(function(){
     c.save();c.translate(p.lx+(1-inK)*W*.75+2+dx,p.ly-2+dy);c.rotate(-.12+a*.25);SPR.img(c,'hand-press',0,0,hh,.035,.17);c.restore();
     if(a>.3&&t<.8){c.save();c.globalAlpha=.6;c.strokeStyle='#fff';c.lineWidth=2;for(const q of[-.6,0,.6]){c.beginPath();c.moveTo(p.lx-6+Math.cos(q-1.57)*14,p.ly-10+Math.sin(q-1.57)*14);c.lineTo(p.lx-6+Math.cos(q-1.57)*22,p.ly-10+Math.sin(q-1.57)*22);c.stroke();}c.restore();}}
   function drawParts2(c){for(const p of G.parts){if(p.k!=='butt')continue;c.save();c.translate(p.x,p.y);c.rotate(p.rot+p.t*6);c.fillStyle='#f3efe6';c.fillRect(-5,-1.6,7,3.2);c.fillStyle=p.col;c.fillRect(2,-1.6,4,3.2);c.restore();}}
-  function drawFront(c){if(!S)return;drawParts2(c);drawCan(c);drawHandPress(c);drawFeet(c);bubble(c);
+  function drawFront(c){if(!S)return;drawParts2(c);drawCan(c);drawHandPress(c);bubble(c);
     const dr=S.door;if(dr.fx>0){const a=Math.min(1,dr.fx*1.5);c.save();c.globalAlpha=a;c.font='26px '+FONT;c.textAlign='center';c.lineWidth=6;c.strokeStyle='#111';c.fillStyle='#ffd23a';const y=L.U.y-6+Math.sin(S.t*30)*2*a;c.translate(W/2,y);c.rotate(-.05);c.strokeText(dr.txt,0,0);c.fillText(dr.txt,0,0);c.restore();}}
-  return {splash,reset,update,impact,drawBack,drawFront,ev,onPipe,onCan,aimJitter,_pose:f=>footPose(f),_geo:f=>footGeo(f),get st(){return S;}};
+  return {drawFeet:c=>{if(S)drawFeet(c);},splash,reset,update,impact,drawBack,drawFront,ev,onPipe,onCan,aimJitter,_pose:f=>footPose(f),_geo:f=>footGeo(f),get st(){return S;}};
 })();

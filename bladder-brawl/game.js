@@ -100,15 +100,20 @@ function vib(p){if(S.vib&&navigator.vibrate&&!SIMMODE&&(!navigator.userActivatio
 /* v5: the play screen is one painted plate (art/plate5, 720x1280) cover-fitted; all geometry is measured in plate pixels */
 const PL={s:1,ox:0,oy:0};const px=x=>PL.ox+x*PL.s,py=y=>PL.oy+y*PL.s;
 function wallL(y){const p=(y-PL.oy)/PL.s;let x;if(p<567){const q=Math.min(52,567-p);x=220-Math.sqrt(Math.max(0,2704-q*q));}else if(p<=860)x=168;else{const t=Math.min(1,(p-860)/235);x=363-195*Math.sqrt(1-t*t);}return px(x);}
+/* outer bottom edge of the urinal (plate px), from the cut-out mask */
+const LIPP=[[117,700],[130,959],[150,1045],[170,1084],[190,1111],[210,1134],[230,1152],[250,1168],[270,1179],[290,1188],[310,1195],[330,1200],[350,1203],[370,1203],[390,1202],[410,1198],[430,1194],[450,1186],[470,1176],[490,1162],[510,1147],[530,1128],[550,1103],[570,1071],[590,1022],[615,700]];
+function lipAt(x){const p=(x-PL.ox)/PL.s;if(p<=117||p>=615)return -1e4;for(let i=1;i<LIPP.length;i++)if(p<=LIPP[i][0]){const a=LIPP[i-1],b=LIPP[i],u=(p-a[0])/(b[0]-a[0]);return py(a[1]+(b[1]-a[1])*u);}return -1e4;}
 function wallR(y){return 2*L.cx-wallL(y);}
 function bowlPath(c,pad){pad=pad||0;c.beginPath();const n=40;for(let i=0;i<=n;i++){const y=L.rimY+i/n*L.wallH;c.lineTo(wallL(y)-pad,y);}for(let i=n;i>=0;i--){const y=L.rimY+i/n*L.wallH;c.lineTo(wallR(y)+pad,y);}c.closePath();}
 function layout(){
   const st=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sat'))||0,sb=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sab'))||0;
   L.top=st/SC+60;L.base=H-sb/SC+8;L.gusS=.8;L.feet=Math.min(96,H*.11);
-  const s=Math.max(W/720,H/1280);PL.s=s;PL.ox=(W-720*s)/2;PL.oy=(H-1280*s)/2;
+  /* v5c: the urinal is fitted, not the plate: flushometer just under the HUD, bottom lip at ~83% height so the sneakers stand on the floor below it */
+  const top0=st/SC+42;let s=(H*.83-top0)/(1204-236);s=Math.min(s,W/520);s=Math.max(s,W/840);PL.s=s;PL.ox=W/2-363*s;PL.oy=top0-236*s;
+  if(PL.oy+1700*s<H){PL.oy=H-1700*s;}
   L.U={x:px(117),y:py(367),w:485*s,h:805*s};L.cx=px(363);
   L.rimY=py(515);L.spawnY=py(1025);L.bowlBot=py(1095);L.waterY=py(969);L.drainX=px(356);L.drainR=40*s;
-  L.oy=L.bowlBot+14;L.wallH=L.bowlBot-L.rimY;L.K=L.wallH/496;
+  L.oy=L.bowlBot+14;L.lipY=py(1204);L.wallH=L.bowlBot-L.rimY;L.K=L.wallH/496;
   // half rim contour (top centre -> top edge -> side wall -> bottom), normalised arc length, for the flush water
   const pts=[[L.cx,L.rimY]];for(let i=0;i<=60;i++){const y=L.rimY+i/60*L.wallH;pts.push([wallL(y),y]);}let acc=0;L.rim=pts.map((q,i)=>{if(i)acc+=Math.hypot(q[0]-pts[i-1][0],q[1]-pts[i-1][1]);return {x:q[0],y:q[1],s:acc};});L.rim.forEach(q=>q.s/=acc);L.rimTop=(L.cx-wallL(L.rimY))/acc;
 }
@@ -118,7 +123,7 @@ function resize(){const vw=innerWidth,vh=innerHeight;const ww=Math.min(vw,vh*0.6
 const bgC=document.createElement('canvas'),bgX=bgC.getContext('2d');let bgKey='';
 function buildBg(ch){const k=ch+'|'+H+'|'+DPR;if(k===bgKey)return;bgKey=k;bgC.width=Math.round(W*SC*DPR);bgC.height=Math.round(H*SC*DPR);const c=bgX;c.setTransform(SC*DPR,0,0,SC*DPR,0,0);const C=CH[ch];
   c.fillStyle='#2a2230';c.fillRect(0,0,W,H);
-  if(SPR.ok('plate5')){c.drawImage(SPR.I.plate5,PL.ox,PL.oy,720*PL.s,1280*PL.s);
+  if(SPR.ok('plate5c')){c.drawImage(SPR.I.plate5c,PL.ox-60*PL.s,PL.oy,840*PL.s,1700*PL.s);
     // chapter mood: tint the wall (not the porcelain) a little per chapter
     if(ch>0){c.save();c.beginPath();c.rect(0,0,W,H);const S_=PL.s,rrp=(x,y,w,h,r)=>{c.moveTo(px(x+r),py(y));c.arcTo(px(x+w),py(y),px(x+w),py(y+h),r*S_);c.arcTo(px(x+w),py(y+h),px(x),py(y+h),r*S_);c.arcTo(px(x),py(y+h),px(x),py(y),r*S_);c.arcTo(px(x),py(y),px(x+w),py(y),r*S_);c.closePath();};rrp(104,352,512,836,130);rrp(170,120,380,231,30);c.clip('evenodd');c.globalCompositeOperation='color';c.globalAlpha=.26;c.fillStyle=ch===1?'#7a2a8a':'#2050c0';c.fillRect(0,0,W,H);c.restore();}}
   else{c.fillStyle=lin(c,0,0,0,H,[[0,C.wall[0]],[1,C.wall[1]]]);c.fillRect(0,0,W,H);bowlPath(c);c.fillStyle='#eee6d6';c.fill();}
@@ -273,6 +278,8 @@ function render(){const c=cx;c.setTransform(DPR*SC,0,0,DPR*SC,0,0);
   if(G.state==='title'||!def){c.fillStyle='#1d1530';c.fillRect(0,0,W,H);return;}
   c.save();if(G.shake>0){const s=G.shake*G.shake*9;c.translate(rand(-s,s),rand(-s,s));}
   c.drawImage(bgC,0,0,W,H);
+  // floor -> sneakers/jeans -> urinal lip (with contact shadow) -> bugs/effects -> HUD
+  SCN.drawFeet(c);if(SPR.ok('lip5'))c.drawImage(SPR.I.lip5,px(0),py(880),720*PL.s,410*PL.s);
   // tinted water as you pee
   c.save();c.globalAlpha=clamp(G.t/90,0,.35);ell(c,L.drainX,L.waterY,L.drainR*2.2,L.drainR*1.1);c.fillStyle='#ffe14d';c.fill();c.restore();
   for(const s of G.stains){c.globalAlpha=s.a;ell(c,s.x,s.y,s.r,s.r*.6);c.fillStyle='#f2cf2c';c.fill();}c.globalAlpha=1;
