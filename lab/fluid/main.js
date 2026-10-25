@@ -64,10 +64,10 @@ cam.getWorldDirection(FWD); UPV.set(0, 1, 0).applyQuaternion(cam.quaternion);
 const LEVELS = [
   { name: 'Low', sub: 60, maxN: 700, rate: 1050, rt: 0.42, dpr: 1, blur: 5 },
   { name: 'Med', sub: 90, maxN: 1100, rate: 700, rt: 0.5, dpr: 1.25, blur: 7 },
-  { name: 'High', sub: 120, maxN: 1600, rate: 880, rt: 0.6, dpr: 1.5, blur: 8 },
+  { name: 'High', sub: 120, maxN: 2000, rate: 1000, rt: 0.7, dpr: 1.5, blur: 8 },
   { name: 'Ultra', sub: 120, maxN: 2300, rate: 520, rt: 0.75, dpr: 2, blur: 10 },
 ];
-let qAuto = !Q.get('q'), qi = Q.get('q') ? Math.max(0, Math.min(3, +Q.get('q'))) : 2;
+let qAuto = !Q.get('q'), qi = Q.get('q') ? Math.max(0, Math.min(3, +Q.get('q'))) : 3;
 const MAXN = 3200;
 
 // ---------- layout ----------
