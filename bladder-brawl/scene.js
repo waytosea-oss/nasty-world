@@ -92,12 +92,17 @@ const SCN=(function(){
       // lying flat on the urinal top: long axis left-right, foreshortened trapezoid (far edge narrower)
       const Lw=ph.h*1.05,Dp=ph.h*.3;c.globalAlpha=.45;c.fillStyle='#000';c.beginPath();c.ellipse(1,Dp*.1+2,Lw*.56,Dp*.62,0,0,6.283);c.fill();c.globalAlpha=1;
       if(bz){c.fillStyle='rgba(120,220,255,'+(.3+.25*Math.sin(S.t*20))+')';c.beginPath();c.ellipse(0,0,Lw*.66,Dp*1.1,0,0,6.283);c.fill();}
-      const pc=phoneFlat();if(pc){const n=24;for(let i=0;i<n;i++){const v=i/n,ww=Lw*(.86+.14*v),y=-Dp/2+Dp*v;c.drawImage(pc,0,pc.height*v,pc.width,pc.height/n+1,-ww/2,y,ww,Dp/n+.6);}}
+      const tz=phoneTrap();if(tz)c.drawImage(tz,-Lw/2,-Dp/2,Lw,Dp);
       c.fillStyle='rgba(20,20,24,.9)';c.beginPath();c.moveTo(-Lw*.5,Dp/2);c.lineTo(Lw*.5,Dp/2);c.lineTo(Lw*.5,Dp/2+2.2);c.lineTo(-Lw*.5,Dp/2+2.2);c.fill();
       if(bz){c.strokeStyle='#9fe8ff';c.lineWidth=2;for(const sd of [-1,1]){c.beginPath();c.ellipse(0,0,Lw*.62+3*Math.sin(S.t*20),Dp*1.2,0,sd<0?Math.PI*.85:-Math.PI*.15,sd<0?Math.PI*1.15:Math.PI*.15);c.stroke();}}
       c.restore();}
   }
-  let _pf=null;function phoneFlat(){if(_pf)return _pf;if(!SPR.ok('phone'))return null;const im=SPR.I.phone,cv=document.createElement('canvas');cv.width=im.naturalHeight;cv.height=im.naturalWidth;const x=cv.getContext('2d');x.translate(cv.width,0);x.rotate(Math.PI/2);x.drawImage(im,0,0);return _pf=cv;}
+  /* WebKit can report a decoded size before the pixels are ready: keep rebuilding the cached flat phone until it has real pixels */
+  /* foreshortened trapezoid (far edge narrower) baked once into its own canvas; drawing 24 thin slices straight into the
+     rotated scene canvas silently drew nothing in WebKit */
+  let _tz=null;function phoneTrap(){if(_tz)return _tz;const pc=phoneFlat();if(!pc||!_pfOk)return null;const W2=pc.width,H2=Math.round(pc.width*.3),o=document.createElement('canvas');o.width=W2;o.height=H2;const x=o.getContext('2d'),n=24;
+    for(let i=0;i<n;i++){const v=i/n,ww=W2*(.86+.14*v),sy0=pc.height*v,sh0=Math.min(pc.height/n+1,pc.height-sy0);x.drawImage(pc,0,sy0,pc.width,sh0,(W2-ww)/2,H2*v,ww,H2/n+.6);}return _tz=o;}
+  let _pf=null,_pfOk=0;function phoneFlat(){if(_pf&&_pfOk)return _pf;if(!SPR.ok('phone'))return null;const im=SPR.I.phone,cv=_pf||document.createElement('canvas');cv.width=im.naturalHeight;cv.height=im.naturalWidth;const x=cv.getContext('2d');x.translate(cv.width,0);x.rotate(Math.PI/2);x.drawImage(im,0,0);x.setTransform(1,0,0,1,0,0);try{_pfOk=x.getImageData(cv.width>>1,cv.height>>1,1,1).data[3]>0?1:0;}catch(e){_pfOk=1;}return _pf=cv;}
   function shoeCanvas(f){const k=f.side+'|'+f.wet;if(S.cache[k])return S.cache[k];const nm=f.side<0?'toeL5':'toeR5',im=SPR.I[nm];if(!SPR.ok(nm))return null;
     const w=288,h=im.naturalHeight,cv=document.createElement('canvas');cv.width=w;cv.height=h;const x=cv.getContext('2d');
     x.drawImage(im,0,0,w,h);x.setTransform(1,0,0,1,0,0);
@@ -168,5 +173,5 @@ const SCN=(function(){
   function drawParts2(c){for(const p of G.parts){if(p.k!=='butt')continue;c.save();c.translate(p.x,p.y);c.rotate(p.rot+p.t*6);c.fillStyle='#f3efe6';c.fillRect(-5,-1.6,7,3.2);c.fillStyle=p.col;c.fillRect(2,-1.6,4,3.2);c.restore();}}
   function drawFront(c){if(!S)return;drawParts2(c);drawCan(c);drawHandPress(c);bubble(c);
     const dr=S.door;if(dr.fx>0){const a=Math.min(1,dr.fx*1.5);c.save();c.globalAlpha=a;c.font='26px '+FONT;c.textAlign='center';c.lineWidth=6;c.strokeStyle='#111';c.fillStyle='#ffd23a';const y=L.U.y-6+Math.sin(S.t*30)*2*a;c.translate(W/2,y);c.rotate(-.05);c.strokeText(dr.txt,0,0);c.fillText(dr.txt,0,0);c.restore();}}
-  return {drawFeet:c=>{if(S)drawFeet(c);},splash,reset,update,impact,drawBack,drawFront,ev,onPipe,onCan,aimJitter,_pose:f=>footPose(f),_geo:f=>footGeo(f),get st(){return S;}};
+  return {drawFeet:c=>{if(S)drawFeet(c);},splash,reset,update,impact,drawBack,drawFront,ev,onPipe,onCan,aimJitter,_pose:f=>footPose(f),_pf:()=>phoneFlat(),_geo:f=>footGeo(f),get st(){return S;}};
 })();

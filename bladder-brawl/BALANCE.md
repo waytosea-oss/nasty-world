@@ -104,3 +104,30 @@ Compared with v4:
 ## v5g
 - Flush redone: full-bowl water sheet (front sweeps rimY->drain in ~0.9 s, tail drains 1.3-2.05 s, swirl, wet sheen until 3.2 s). Every non-boss bug between the tail and the front is washed (previously only bugs touching the wall sheets). Bosses still take 12% once. Sim: skill .35 wins rose slightly on L9/L13/L14 (0->33, 50->66, 16->33); .6/.85 unchanged.
 - Perf: adaptive DPR, cached lip/stains, per-frame stream buffer cache, pre-decoded art.
+
+## v6 3D fluid stream (Oct 2026)
+The 2D drop stream + impact fan wash are replaced by the 3D particle jet (`fluid.js`). Damage now comes from particle hits
+on each bug (bugs are projected onto the porcelain cavity as spheres of radius `bug.r + 0.5·rad·K`):
+
+- hit units per particle = 0.16·(−v·n + 0.3·|v|) × (1.0 direct jet, 0.35 splash droplet, 0.12 second bounce)
+- damage per unit = `dps · FXK / (rate·1.3·0.6)` → independent of the quality tier's particle rate
+- knockback = damage × 6·kb/dps × `FXKB`
+- boss multipliers: Baron Blowfly ×1, General Goo ×1.5, Mama Legs ×4.4 (the old wash fan used to hit her minions and her at the same time; one focused jet can't)
+- Flush: normal bugs washed into the drain, bosses keep the old 12% rule (unchanged). The stream pauses while the sheet runs.
+
+Tuned constants (`?fxk= ?fxkb= ?fxb= ?fxs=` override them for testing): **FXK 1.4, FXKB 1.5, FXB 1, FXS 4.4**.
+Measured with `_work/sim6.py` (real fluid physics inside `?sim&fxsim&q=1`, 8 seeds/level, same greedy upgrade path as 2D):
+
+```
+before (v5g 2D, 8 seeds)
+0.35 100 87 100 100 75 0 100 100 50 87 25 12 50 62 0 25 62 0      avg 57%
+0.6  100 100 100 100 100 87 100 100 87 100 100 100 100 50 50 100 100 75   avg 94%
+0.85 100 ×18                                                          avg 100%
+after (v6 fluid, FXK 1.4)
+0.35 100 100 87 100 37 25 100 87 12 100 87 12 12 25 62 62 62 12   avg 60%
+0.6  100 100 100 100 100 87 100 100 100 100 100 100 100 75 100 75 100 50  avg 94%
+0.85 100 100 100 100 100 100 100 100 100 100 100 100 100 87 100 87 100 87 avg 98%
+```
+Same overall curve. Per-level shifts beyond noise: L5/L13 are a bit harder for casual aim (the jet needs to actually be on
+the bug; there is no wide fan any more), L11/L15 a bit easier; the final boss is slightly harder for average players (50% vs 75%).
+The plain `?sim` (no `fxsim`) still uses the v5g 2D model and is what the WebGL-less fallback plays.
