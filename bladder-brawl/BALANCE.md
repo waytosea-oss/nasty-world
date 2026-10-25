@@ -92,3 +92,6 @@ Compared with v4:
 - Lip at 0.9H (bowl ~9% larger at 390x844). Toe caps only (toe5, procedural raymarch), under lip layer.
 - Liquid stream (layered edge/body/core, necking, Plateau-Rayleigh beads on long streams); wedge impact fan. Damage logic unchanged.
 - Sim: 0.35 skill slightly harder; 0.6 L14 66 / L18 50; 0.85 L14 83. No retune.
+
+## v5e
+- Painted assets: toe5 (sneaker toe boxes), stream5 (liquid strip, UV-scrolled, sheared straight from top edge to impact), fan5 (4-variant splash sheet, rotated to wash dir), flush sheets textured with desaturated stream5. Visual only; damage/balance unchanged.

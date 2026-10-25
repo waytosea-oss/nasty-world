@@ -15,9 +15,9 @@ const SCN=(function(){
   const U=()=>L.U;
   // ---------- geometry ----------
   // sneakers stand on the floor in the bottom corners (toes toward the urinal, jeans hems running off-screen)
-  function footGeo(f){const x=W/2+f.side*W*.19,lp=Math.max(lipAt(x),L.lipY-PL.s*60);const w=clamp(W*.26,84,118),h=w*581/288;
+  function footGeo(f){const x=W/2+f.side*W*.19,lp=Math.max(lipAt(x),L.lipY-PL.s*60);const w=clamp(W*.26,84,118),h=w*318/288;
     // v5d: only the toe caps peek out, ~30% of the cap tucked under the urinal's front lip; the rest runs off the bottom edge
-    return {x,base:lp-h*.15+h,h,w,lip:lp};}
+    return {x,base:lp-h*.1+h,h,w,lip:lp};}
   function pipeGeo(){const s=PL.s;return {x:px(400),bot:py(300),h:150*s,w:200*s,top:py(215),lx:px(461),ly:py(296)};}
   function phonePos(){return {x:px(208),y:py(482),h:Math.max(34,112*PL.s)};}
   function canHome(){return {x:px(512),y:py(496),h:Math.max(52,168*PL.s)};}
@@ -83,8 +83,8 @@ const SCN=(function(){
   }
   // ---------- drawing ----------
   function drawBack(c){if(!S)return;
-    for(const k of S.streaks){const a=Math.min(1,k.t*3)*Math.max(0,1-(k.t-2.2));if(a<=0)continue;c.globalAlpha=a*.28;c.strokeStyle='#d9b52a';c.lineWidth=k.w;c.lineCap='round';c.beginPath();c.moveTo(k.x,k.y);c.quadraticCurveTo(k.x+k.dx*k.len*.3,k.y+k.len*.5,k.x+k.dx*k.len*.9,k.y+k.len);c.stroke();c.globalAlpha=a*.5;c.fillStyle='#e8c94a';c.beginPath();c.arc(k.x+k.dx*k.len*.9,k.y+k.len,k.w*.9,0,6.283);c.fill();}
-    for(const p of S.puddles){c.globalAlpha=p.a;c.beginPath();c.ellipse(p.x,p.y,p.r*(p.floor?1.6:1),p.r*(p.floor?.55:.9),0,0,6.283);c.fillStyle='#f2cf2c';c.fill();}c.globalAlpha=1;
+    for(const k of S.streaks){const a=Math.min(1,k.t*3)*Math.max(0,1-(k.t-2.2));if(a<=0)continue;c.globalAlpha=a*.22;c.strokeStyle='#e0bf45';c.lineWidth=k.w;c.lineCap='round';c.beginPath();c.moveTo(k.x,k.y);c.quadraticCurveTo(k.x+k.dx*k.len*.3,k.y+k.len*.5,k.x+k.dx*k.len*.9,k.y+k.len);c.stroke();c.globalAlpha=a*.5;c.fillStyle='#e8c94a';c.beginPath();c.arc(k.x+k.dx*k.len*.9,k.y+k.len,k.w*.9,0,6.283);c.fill();}
+    for(const p of S.puddles){c.globalAlpha=p.a;c.beginPath();c.ellipse(p.x,p.y,p.r*(p.floor?1.6:1),p.r*(p.floor?.55:.9),0,0,6.283);{const rx=p.r*(p.floor?1.6:1),g=c.createRadialGradient(p.x-rx*.3,p.y-rx*.15,0,p.x,p.y,rx);g.addColorStop(0,'rgba(255,250,215,.6)');g.addColorStop(.6,'rgba(235,200,80,.38)');g.addColorStop(1,'rgba(180,130,20,.12)');c.fillStyle=g;}c.fill();}c.globalAlpha=1;
     const tg=S.target;if(tg.on>0){const a=Math.min(1,tg.on,(7-tg.on)*3);c.save();c.globalAlpha=a*.95;c.translate(tg.x,tg.y);const s=1+Math.sin(S.t*6)*.06;c.scale(s,s);
       c.strokeStyle='#e8233f';c.lineWidth=3;for(const r of [18,11]){c.beginPath();c.arc(0,0,r,0,6.283);c.stroke();}c.fillStyle='#e8233f';c.beginPath();c.arc(0,0,4,0,6.283);c.fill();
       c.globalAlpha*=.85;SPR.img(c,'en-fly',0,0,22);c.restore();}
@@ -95,11 +95,11 @@ const SCN=(function(){
       c.restore();}
   }
   function shoeCanvas(f){const k=f.side+'|'+f.wet;if(S.cache[k])return S.cache[k];const im=SPR.I.toe5;if(!SPR.ok('toe5'))return null;
-    const w=288,h=581,cv=document.createElement('canvas');cv.width=w;cv.height=h;const x=cv.getContext('2d');
+    const w=288,h=318,cv=document.createElement('canvas');cv.width=w;cv.height=h;const x=cv.getContext('2d');
     if(f.side<0){x.translate(w,0);x.scale(-1,1);}x.drawImage(im,0,0,w,h);x.setTransform(1,0,0,1,0,0);
     if(f.wet>0){x.globalCompositeOperation='source-atop';let s=7+f.side*3;const rr=()=>{s=(s*16807)%2147483647;return s/2147483647;};
       for(let i=0;i<f.wet*3;i++){x.globalAlpha=.12+.035*f.wet;x.fillStyle=i%3?'#9a7c18':'#5e4a0c';x.beginPath();x.ellipse(w*(.25+rr()*.5),h*(.04+rr()*.36),12+rr()*16+f.wet*3,8+rr()*10+f.wet*2,rr()*3,0,6.283);x.fill();}
-      x.globalAlpha=.25;x.fillStyle='#fff8c0';for(let i=0;i<f.wet*2;i++){x.beginPath();x.arc(w*(.3+rr()*.4),h*(.18+rr()*.2),2+rr()*2,0,6.283);x.fill();}}
+      x.globalAlpha=.25;x.fillStyle='#fff8c0';for(let i=0;i<f.wet*2;i++){x.beginPath();x.arc(w*(.3+rr()*.4),h*(.12+rr()*.35),2+rr()*2,0,6.283);x.fill();}}
     S.cache[k]=cv;return cv;}
   function footPose(f){const t=S.t,sd=f.side;let dx=0,dy=0,rot=-sd*.16,sc=1;const e=S.ev,cap=stats().cap,low=G.bladder<cap*.22;
     if(e&&e.k==='win'){dx=Math.sin(t*9+(sd>0?Math.PI:0))*7;dy=-Math.abs(Math.sin(t*9+(sd>0?Math.PI:0)))*10;rot+=Math.sin(t*9)*.08;}
