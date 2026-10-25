@@ -189,3 +189,74 @@ Sim, real fluid, 28 seeds, greedy upgrade path per tier (overall win % over 18 l
 - Hard walls: L5 for casual, L9/L13/L15–L17 for everyone.
 - The skilled bot aims almost perfectly, so real skilled humans will sit below it.
 - Hard's average result (26) is a bit under the 30–40 target. That's deliberate, leaning harder. If phones say it's too brutal, raise hard `dmg` to .9 first.
+
+## v7 — "still too easy": harder, more varied
+
+### Why the sims overestimated difficulty
+- **The bot was not human-like.** The v6 bot re-rolled its aim error every time it switched target, so the errors averaged out. With skill it was almost perfect, and it reacted instantly. Its numbers mostly measured the HP-vs-DPS race, not the player.
+- **The game asked very little of a human.** Bugs were passive, slow climbers (about 10 s to the rim) with no attacks or obstacles. You had 5 hearts, short levels and 2 near-full-wipe flushes, and the tank almost never ran dry. A continuous jet with visual feedback plus pad aim let a person simply hold the stream on target.
+- **Check:** with the new human-like bot, v6.2 Normal comes out at 45 / 78 / **95%** (casual / average / skilled). The old curve really was easy, and skill barely mattered.
+
+### New human-like bot (game.js BOT)
+- **Perception:** samples the bowl every 0.12–0.47 s and sees stale positions in between.
+- **Reaction:** 0.2–0.55 s delay to switch targets.
+- **Finger:** moves at a finite speed (350–950 px/s).
+- **Aim:** drifts smoothly (OU noise, amplitude 8–44 px) instead of being re-rolled.
+- **Visibility:** darkness, gunk and webs make it worse.
+- **Priorities:** goes for healers, spitters and climbers first, side-aims at armour and manages the tank.
+
+### New mechanics
+- **New bugs:**
+
+  | Bug | Behaviour | First level |
+  |---|---|---|
+  | Gnat swarm | Tiny and fast | L2 |
+  | Blob maggot | Splits into 3 fast minis | L3 |
+  | Dodgy roach | Dashes sideways when hit | L4 |
+  | Rim runner | Sprinter | L5 |
+  | Tin-cap beetle | Takes only 15% damage from the front; hit the sides, or flush the cap off | L7 |
+  | Gob fly | Winds up, then spits gunk that blocks your view | L8 |
+  | Nurse snail | Heals nearby bugs | L10 (card shows at L15) |
+
+- **Wave twists**, each with a "LEVEL TWIST" card:
+
+  | Twist | Effect | Levels |
+  |---|---|---|
+  | Lights Out | Flickering darkness; only the bugs' eyes glow | L9, L15 |
+  | Soap Spill | Bugs slide around | L11, L17 |
+  | Butt Bunkers | Cigarette butts shield bugs until they're soaked or flushed away | L13, L16 |
+  | Fast Forward | ×1.3 speed and shorter gaps | L14, L17 |
+
+- **Combo streak:** the coin multiplier rises up to ×4/×5/×6. Missing for more than 0.9 s or letting a bug escape resets it. The win screen shows your best streak.
+- **Pickups:** a 6.5% drop chance. Drink can = more pressure; beer = wider stream for a short while.
+- **Bosses:** lunge, spit and heal attacks, plus phase changes at 60% and 30% HP with a banner.
+- **Fail pressure:**
+  - Hearts: 4 / 4 / 3 (easy / normal / hard).
+  - Tank drain: ×1 / ×1.15 / ×1.3.
+  - Bug speed and attack rate go up with tier.
+  - Stars: 3 for no losses, 2 for ≤1, 1 otherwise.
+- **Intro cards:** one card the first time each bug or twist appears, stored in `S.seen`. Add `?cards` to force them again.
+
+### Tier knobs (final)
+```
+easy  : hpa .5  hpb .65 dmg .8  lives 4 drain 1    sp 1    atk .8
+normal: hpa .5  hpb .7  dmg .77 lives 4 drain 1.15 sp 1.08 atk 1
+hard  : hpa .4  hpb .75 dmg .82 lives 3 drain 1.3  sp 1.16 atk 1.3 fin .72
+```
+In this list, dmg = the player's damage multiplier. The per-level HP shape is `DMT` in game.js.
+
+### Sims (2D model, 28 seeds, greedy upgrade path, retry-until-win coins). Win % averaged over L1–L18
+
+| tier | casual .35 | average .6 | skilled .85 | target |
+|---|---|---|---|---|
+| v6.2 Normal (human bot) | 44.9 | 78.2 | 95.3 | — |
+| v6.2 Iron (human bot) | 21.7 | 31.5 | 72.3 | ≈ new Regular |
+| **v7 Pee-Wee** | 46.7 | 77.6 | 97.9 | casual ~35 |
+| **v7 Regular** | 16.8 | 44.4 | 81.1 | 10 / 45 / 75 |
+| **v7 Iron** | 2.8 | 19.7 | 47.2 | – / 10 / 35 |
+| v7 Iron final boss (L18), skilled | | | 18 | ~15 |
+
+Notes:
+- **Results jump between runs.** Results depend on the upgrade path. Whether a skilled player clears L8 early decides the rest, so Iron skilled swung between 25 and 57 across runs with nearly the same knobs.
+- **Possible slack.** Pee-Wee casual and Iron skilled are above target, but the bot still beats real phone players in quick decisions. If Iron feels too brutal on phones, raise hard `dmg` to .9.
+- **Next levers if it's still too easy:** Regular `hpa` and `lives`.
