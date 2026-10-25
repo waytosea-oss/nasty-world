@@ -112,7 +112,7 @@ function layout(){
   /* v5c: the urinal is fitted, not the plate: flushometer just under the HUD, bottom lip at ~83% height so the sneakers stand on the floor below it */
   /* v6: bigger framing (fluid lab v4d): the bowl fills the screen. Top edge sits on the flushometer body (plate y~252, under the HUD bar),
      outer porcelain cropped at the sides (inner bowl + rim sliver stay visible), the lip sits just high enough for the toe caps below it */
-  const top0=st/SC,toes=clamp(W*.23,76,104)*.42+6,UY0=(V6?252:236),UY1=1204;let s=V6?(H-sb/SC-top0-toes)/(UY1-UY0):(H*.9-top0-42)/(1204-236);
+  const top0=st/SC,toes=clamp(W*.23,76,104)*.42+6,UY0=(V6?240:236),UY1=1204;let s=V6?(H-sb/SC-top0-toes)/(UY1-UY0):(H*.9-top0-42)/(1204-236);
   s=Math.min(s,V6?W/452:W/520);s=Math.max(s,W/840);PL.s=s;PL.ox=W/2-363*s;PL.oy=V6?H-sb/SC-toes-UY1*s:top0+42-236*s;
   if(V6&&PL.oy>top0-UY0*s+40)PL.oy=top0-UY0*s+40;
   if(PL.oy+1700*s<H){PL.oy=H-1700*s;}
@@ -124,7 +124,7 @@ function layout(){
 }
 function resize(){const vw=innerWidth,vh=innerHeight;const ww=Math.min(vw,vh*0.62,560);SC=ww/W;H=Math.round(vh/SC);DPR=Math.min(QMAX,devicePixelRatio||1);
   if(FX)DPR=Math.min(DPR,FX.bgScale());
-  cv.style.width=ww+'px';cv.style.height=vh+'px';cv.width=Math.round(ww*DPR);cv.height=Math.round(vh*DPR);$('app').style.width=ww+'px';layout();bgKey='';
+  cv.style.width=ww+'px';cv.style.height=vh+'px';cv.width=Math.round(ww*DPR);cv.height=Math.round(vh*DPR);$('app').style.width=ww+'px';layout();bgKey='';if(typeof def!=='undefined'&&def&&!SIMMODE)buildBg(def.ch);
   if(FX){const td=Math.min(2,devicePixelRatio||1);for(const e of [FX.canvas,cvt]){e.style.width=ww+'px';e.style.height=vh+'px';}cvt.width=Math.round(ww*td);cvt.height=Math.round(vh*td);TDPR=td;
     FX.layout(ww,vh,{s:PL.s*SC,ox:(PL.ox-60*PL.s)*SC,oy:PL.oy*SC},cv);}}
 /* ---------------- v6 fluid hookup ---------------- */
@@ -143,9 +143,11 @@ function fxDisable(){if(!FX)return;const F=FX;FX=null;F.flow(false);F.clear();F.
 let _lipC=null,_lipK='';function lipC(){if(!SPR.ok('lip5'))return null;const w=Math.ceil(720*PL.s*SC*DPR),h=Math.ceil(410*PL.s*SC*DPR),k=w+'x'+h;if(k!==_lipK){_lipK=k;_lipC=_lipC||document.createElement('canvas');_lipC.width=w;_lipC.height=h;_lipC.getContext('2d').drawImage(SPR.I.lip5,0,0,w,h);}return _lipC;}
 let _stC=null;function stainC(){if(_stC)return _stC;const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d'),g=x.createRadialGradient(22,25,0,32,32,32);g.addColorStop(0,'rgba(255,250,215,.55)');g.addColorStop(.6,'rgba(235,200,80,.35)');g.addColorStop(1,'rgba(180,130,20,0)');x.fillStyle=g;x.fillRect(0,0,64,64);return _stC=c;}
 const bgC=document.createElement('canvas'),bgX=bgC.getContext('2d');let bgKey='';
+/* WebKit drops big drawImage calls whose destination starts far off-canvas (v6 framing puts the plate top above the screen): clip the source rect by hand */
+function drawClipped(c,img,dx,dy,dw,dh,cw,ch){const iw=img.naturalWidth||img.width,ih=img.naturalHeight||img.height,kx=iw/dw,ky=ih/dh;const x0=Math.max(dx,0),y0=Math.max(dy,0),x1=Math.min(dx+dw,cw),y1=Math.min(dy+dh,ch);if(x1<=x0||y1<=y0)return;c.drawImage(img,(x0-dx)*kx,(y0-dy)*ky,(x1-x0)*kx,(y1-y0)*ky,x0,y0,x1-x0,y1-y0);}
 function buildBg(ch){const k=ch+'|'+H+'|'+DPR;if(k===bgKey)return;bgKey=k;bgC.width=Math.round(W*SC*DPR);bgC.height=Math.round(H*SC*DPR);const c=bgX;c.setTransform(SC*DPR,0,0,SC*DPR,0,0);const C=CH[ch];
   c.fillStyle='#2a2230';c.fillRect(0,0,W,H);
-  if(SPR.ok('plate5c')){c.drawImage(SPR.I.plate5c,PL.ox-60*PL.s,PL.oy,840*PL.s,1700*PL.s);
+  if(SPR.ok('plate5c')){drawClipped(c,SPR.I.plate5c,PL.ox-60*PL.s,PL.oy,840*PL.s,1700*PL.s,W,H);
     // chapter mood: tint the wall (not the porcelain) a little per chapter
     if(ch>0){c.save();c.beginPath();c.rect(0,0,W,H);const S_=PL.s,rrp=(x,y,w,h,r)=>{c.moveTo(px(x+r),py(y));c.arcTo(px(x+w),py(y),px(x+w),py(y+h),r*S_);c.arcTo(px(x+w),py(y+h),px(x),py(y+h),r*S_);c.arcTo(px(x),py(y+h),px(x),py(y),r*S_);c.arcTo(px(x),py(y),px(x+w),py(y),r*S_);c.closePath();};rrp(104,352,512,836,130);rrp(170,120,380,231,30);c.clip('evenodd');c.globalCompositeOperation='color';c.globalAlpha=.26;c.fillStyle=ch===1?'#7a2a8a':'#2050c0';c.fillRect(0,0,W,H);c.restore();}}
   else{c.fillStyle=lin(c,0,0,0,H,[[0,C.wall[0]],[1,C.wall[1]]]);c.fillRect(0,0,W,H);bowlPath(c);c.fillStyle='#eee6d6';c.fill();}
@@ -238,7 +240,7 @@ function update(dt){
   if(!SIMMODE&&!BOT.on){/* tutorial nudge */}
 }
 /* v6 fluid: the 3D jet replaces the drops; damage comes from particle hits on the bugs (direct jet 1, splash .35, second bounce .12) */
-const FXK=+(Q.get('fxk')||1.3),FXB=+(Q.get('fxb')||1),FXS=+(Q.get('fxs')||4.4),FXKB=+(Q.get('fxkb')||1.5);/* calibrated: fluid DPS on a held target ~= v5g direct+wash (see BALANCE.md v6) */
+const FXK=+(Q.get('fxk')||1.4),FXB=+(Q.get('fxb')||1),FXS=+(Q.get('fxs')||4.4),FXKB=+(Q.get('fxkb')||1.5);/* calibrated: fluid DPS on a held target ~= v5g direct+wash (see BALANCE.md v6) */
 function fxPoints(st){const o={x:L.cx+clamp((G.aim.x-L.cx)*.06,-10,10),y:L.bowlBot+14};const dx=G.aim.x-o.x,dy=G.aim.y-o.y,d=Math.min(Math.hypot(dx,dy),st.range),a0=Math.atan2(dy,dx);
   const offs=st.streams===1?[0]:st.streams===2?[-.1,.1]:[0,-.17,.17];return offs.map(off=>{const dd=d*(off?.97:1);return {x:o.x+Math.cos(a0+off)*dd,y:o.y+Math.sin(a0+off)*dd,w:off?.62:1};});}
 function fxUpdate(dt,st){const pts=fxPoints(st);G.fxAim=pts[0];
