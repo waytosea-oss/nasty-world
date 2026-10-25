@@ -84,9 +84,20 @@ function layout() {
   W = window.innerWidth; H = window.innerHeight;
   DPR = Math.min(window.devicePixelRatio || 1, LEVELS[qi].dpr);
   renderer.setPixelRatio(DPR); renderer.setSize(W, H, false);
-  const s = Math.max(W / CAL.plate[0], H / CAL.plate[1]);
+  // framing: zoom the plate so the urinal (plate px x 180..672, flushometer top y 216, lip y 1196) fills ~95% of the width,
+  // with a thin wall band on top and the lip just above the button bar. ?frame=old = v1/v2 cover-fit framing.
+  let s, ox, oy;
+  if (Q.get('frame') === 'old') { s = Math.max(W / CAL.plate[0], H / CAL.plate[1]); ox = (W - CAL.plate[0] * s) / 2; oy = (H - CAL.plate[1] * s) * 0.5; }
+  else {
+    const UX0 = 180, UX1 = 672, UY0 = 216, UY1 = 1196, band = 30, bottomUI = 78;
+    s = Math.min(0.95 * W / (UX1 - UX0), (H - band - bottomUI) / (UY1 - UY0));
+    s = Math.max(s, W / CAL.plate[0], H / CAL.plate[1]);
+    ox = W / 2 - (UX0 + UX1) / 2 * s;
+    const freeY = H - bottomUI - (UY1 - UY0) * s; oy = Math.min(band, Math.max(8, freeY * 0.35)) - UY0 * s;
+    ox = Math.min(0, Math.max(W - CAL.plate[0] * s, ox)); oy = Math.min(0, Math.max(H - CAL.plate[1] * s, oy));
+  }
   const pw = CAL.plate[0] * s, ph = CAL.plate[1] * s;
-  PL = { s, ox: (W - pw) / 2, oy: (H - ph) * 0.5, pw, ph };
+  PL = { s, ox, oy, pw, ph };
   cam.aspect = pw / ph;
   cam.setViewOffset(pw, ph, -PL.ox, -PL.oy, W, H);
   cam.updateProjectionMatrix();
@@ -209,6 +220,7 @@ function collide(i) {
 const aim = { x: 0, y: 0.06, z: 0.80, tx: 0, ty: 0.06, tz: 0.8 };
 const ORIG = new THREE.Vector3();
 let lastO = null, lastV = null, emitAcc = 0, flowOn = true;
+const JH = [], JH_MAX = 160; // jet emission history: {t,o,v} per substep
 function emitterOrigin(t) {
   // the player's body is above/behind the camera: emit from just behind+above the eye, so every point the
   // camera can see is reachable by a near-straight jet through the urinal opening; the jet enters from the top edge.
@@ -217,7 +229,7 @@ function emitterOrigin(t) {
   return ORIG;
 }
 function emit(dt, t) {
-  if (!flowOn) return;
+  if (!flowOn || flushT > 0) { lastO = null; return; } // flush: the stream pauses so the clear sheet reads clean
   const L = LEVELS[qi];
   aim.x += (aim.tx - aim.x) * Math.min(1, dt * 14); aim.y += (aim.ty - aim.y) * Math.min(1, dt * 14); aim.z += (aim.tz - aim.z) * Math.min(1, dt * 14);
   const o = emitterOrigin(t).clone();
@@ -225,6 +237,7 @@ function emit(dt, t) {
   const T = 0.2;
   window.__T = [T, o.x, o.y, o.z];
   const v = new THREE.Vector3((aim.x - o.x) / T, (aim.y - o.y) / T, (aim.z - o.z - 0.5 * GRAV * T * T) / T);
+  JH.push({ t, ox: o.x, oy: o.y, oz: o.z, vx: v.x, vy: v.y, vz: v.z }); if (JH.length > JH_MAX) JH.shift();
   const pulse = 1 + 0.12 * Math.sin(t * 9);
   emitAcc += L.rate * 1.3 * dt * pulse;
   const n = Math.floor(emitAcc); emitAcc -= n;
@@ -389,7 +402,7 @@ function step(dt, t) {
     const dd = dx * dx + dy * dy + dz * dz;
     const dr = flushT > 0 ? 0.045 : 0.03; if (dd < dr * dr) { kill(i); drained++; continue; }
     if (P.wet[i] && dd < 0.15 * 0.15) { const s = 2.2 * dt; P.vx[i] -= dx / Math.sqrt(dd) * s; P.vy[i] -= dy / Math.sqrt(dd) * s; } // funnel toward drain
-    if (P.age[i] > 7 || P.z[i] < BX[4] || (P.y[i] > CAL.yf + 0.005 && P.z[i] < LIPZ + 0.02) || (!P.water[i] && P.touched[i] && P.age[i] > 3.4)) { kill(i); continue; }
+    if (P.age[i] > 7 || P.z[i] < BX[4] || (P.y[i] > CAL.yf + 0.005 && P.z[i] < LIPZ + 0.02) || (!P.water[i] && P.touched[i] && P.age[i] > 2.6)) { kill(i); continue; }
     if (P.wet[i]) { const m = Math.sin(i * 1.7 + P.z[i] * 55) + 0.5 * Math.sin(i * 0.37 + P.z[i] * 130); P.vx[i] += m * 0.5 * dt; } // irregular rivulets
   }
 }
@@ -412,7 +425,7 @@ function initGL() {
       vT=(g<0.5&&w<0.5)?0.22:1.0; gl_PointSize=max(1.5, vR*uScale/-mv.z); vZ=-mv.z; gl_Position=projectionMatrix*mv; }`;
   const depthMat = new THREE.ShaderMaterial({
     uniforms: { uScale: { value: 1 }, uRad: { value: RAD } }, vertexShader: pv,
-    fragmentShader: `varying float vZ; varying float vR; varying float vP; varying float vJ; varying float vT; void main(){ vec2 c=gl_PointCoord*2.-1.; c.y=-c.y; float r2=dot(c,c); if(r2>1.) discard; float nz=sqrt(1.-r2); gl_FragColor=vec4(vZ-nz*vR*(vT<0.9?0.15:1.),0.,0.,1.); }`,
+    fragmentShader: `varying float vZ; varying float vR; varying float vP; varying float vJ; varying float vT; void main(){ vec2 c=gl_PointCoord*2.-1.; c.y=-c.y; float r2=dot(c,c); if(r2>1.) discard; float nz=sqrt(1.-r2); gl_FragColor=vec4(vZ-nz*vR*(vT<0.9?0.04:(vP<0.5?0.3:1.)),0.,0.,1.); }`,
     depthTest: true, depthWrite: true, blending: THREE.NoBlending,
   });
   const thickMat = new THREE.ShaderMaterial({
@@ -459,8 +472,8 @@ function initGL() {
         // refraction of the painted background through the liquid
         vec2 ruv=vUv + n.xy*(0.004+0.0025*t)*vec2(1.,0.6);
         vec3 refr=texture2D(bg,clamp(ruv,0.001,0.999)).rgb;
-        vec3 absorb=mix(vec3(0.03,0.015,0.008),vec3(0.01,0.035,0.15),pf);              // pale yellow tint grows with thickness
-        vec3 trans=refr*exp(-absorb*t*0.9)*1.04 + vec3(0.03,0.025,0.0)*min(t,1.)*pf + vec3(0.02,0.03,0.04)*min(t,2.)*(1.-pf);
+        vec3 absorb=mix(vec3(0.03,0.015,0.008),vec3(0.004,0.014,0.07),pf);              // pale yellow tint grows with thickness
+        vec3 trans=refr*exp(-absorb*t*0.9)*1.04 + vec3(0.012,0.010,0.0)*min(t,1.)*pf + vec3(0.02,0.03,0.04)*min(t,2.)*(1.-pf);
         float ndv=max(dot(n,v),0.); float fres=0.03+0.97*pow(1.-ndv,5.);
         vec3 L1=normalize(vec3(-0.4,0.8,0.6)), L2=normalize(vec3(0.6,0.3,0.7));
         vec3 h1=normalize(L1+v), h2=normalize(L2+v);
@@ -469,7 +482,7 @@ function initGL() {
         vec3 col=mix(trans,env,fres*0.85)+spec*vec3(1.,0.98,0.9)*(1.+jf);
         col += jf*vec3(1.,0.96,0.80)*0.28*smoothstep(0.55,1.0,ndv); // bright glassy core of the jet
         col += vec3(0.05,0.04,0.0)*smoothstep(0.4,0.0,ndv);
-        float a=smoothstep(0.02,0.45,th)*mix(0.8,1.,jf);
+        float a=smoothstep(0.05,0.5,th)*mix(mix(0.42,0.7,1.-pf),0.8,jf); col+=spec*vec3(1.,0.98,0.9)*0.6*(1.-jf);
         gl_FragColor=vec4(mix(base,col,a),1.);
       }`,
     depthTest: false, depthWrite: false,
@@ -505,7 +518,7 @@ function drawBG(dt) {
   if (IMG.plate5c) c.drawImage(IMG.plate5c, PL.ox, PL.oy, PL.pw, PL.ph);
   // wet stain accumulating where the liquid ran
   stx.globalCompositeOperation = 'destination-out'; stx.fillStyle = `rgba(0,0,0,${Math.min(1, dt * (flushT > 0 ? 1.5 : 0.08))})`; stx.fillRect(0, 0, stain.width, stain.height);
-  stx.globalCompositeOperation = 'source-over'; stx.fillStyle = 'rgba(150,120,30,0.05)';
+  stx.globalCompositeOperation = 'source-over'; stx.fillStyle = 'rgba(150,125,40,0.022)';
   for (let i = 0; i < P.n; i += 3) { if (!P.wet[i] || P.water[i]) continue; V.set(P.x[i], P.y[i], P.z[i]).project(cam); const x = (V.x + 1) / 4 * W, y = (1 - V.y) / 4 * H; stx.fillRect(x - 1.5, y - 1.5, 3, 3); }
   c.drawImage(stain, 0, 0, W, H);
   // bugs
@@ -537,10 +550,12 @@ function drawBG(dt) {
 let showMesh = !!Q.get('mesh');
 function render() {
   const n = P.n, pos = pGeo.attributes.position.array, gen = pGeo.attributes.gen.array, szA = pGeo.attributes.sz.array;
-  let m = 0; for (let i = 0; i < n; i++) { if ((P.x[i] - CX) * FWD.x + (P.y[i] - CY) * FWD.y + (P.z[i] - CZ) * FWD.z < 0.13 || !visible(P.x[i], P.y[i], P.z[i])) continue; pos[m * 3] = P.x[i]; pos[m * 3 + 1] = P.y[i]; pos[m * 3 + 2] = P.z[i]; gen[m] = (P.gen[i] ? 1 : (P.touched[i] ? 0 : 2)) + (P.water[i] ? 4 : 0); szA[m] = (!P.water[i] && P.touched[i] && !P.gen[i]) ? Math.max(0.35, 1 - Math.max(0, P.age[i] - 1.0) / 2.4) : 1; m++;
-    if (!P.touched[i] && !P.water[i]) { // airborne jet: fill the gap to where it was last substep -> continuous glassy column
-      for (let k = 1; k <= 3; k++) { const f = k / 4 / 120; pos[m * 3] = P.x[i] - P.vx[i] * f; pos[m * 3 + 1] = P.y[i] - P.vy[i] * f; pos[m * 3 + 2] = P.z[i] - P.vz[i] * f; gen[m] = 2; szA[m] = 1; m++; }
-    } }
+  let m = 0, ms = 0; const spA = spGeo.attributes.position.array;
+  for (let i = 0; i < n; i++) { if (!P.water[i] && P.gen[i] && P.vx[i] * P.vx[i] + P.vy[i] * P.vy[i] + P.vz[i] * P.vz[i] > 0.5) { if (visible(P.x[i], P.y[i], P.z[i])) { spA[ms * 3] = P.x[i]; spA[ms * 3 + 1] = P.y[i]; spA[ms * 3 + 2] = P.z[i]; ms++; } continue; }
+    if (!P.touched[i] && !P.water[i] && P.age[i] < 0.165) continue; // falling column is drawn as the ribbon
+    if ((P.x[i] - CX) * FWD.x + (P.y[i] - CY) * FWD.y + (P.z[i] - CZ) * FWD.z < 0.13 || !visible(P.x[i], P.y[i], P.z[i])) continue; pos[m * 3] = P.x[i]; pos[m * 3 + 1] = P.y[i]; pos[m * 3 + 2] = P.z[i]; gen[m] = (P.gen[i] ? 1 : (P.touched[i] ? 0 : 2)) + (P.water[i] ? 4 : 0); szA[m] = (!P.water[i] && P.touched[i] && !P.gen[i]) ? Math.max(0.3, 1 - Math.max(0, P.age[i] - 0.7) / 1.9) : 1; m++;
+  }
+  spGeo.attributes.position.needsUpdate = true; spGeo.setDrawRange(0, ms); buildRibbon();
   pGeo.attributes.position.needsUpdate = true; pGeo.attributes.gen.needsUpdate = true; pGeo.attributes.sz.needsUpdate = true; pGeo.setDrawRange(0, m);
   const [rw, rh] = RT.size, L = LEVELS[qi];
   const scale = cam.projectionMatrix.elements[5] * rh / 2;
@@ -561,7 +576,81 @@ function render() {
   cu.bg.value = bgTex; cu.dep.value = RT.a.texture; cu.thk.value = RT.tb.texture; cu.invP.value.copy(cam.projectionMatrixInverse); cu.texel.value.set(1 / rw, 1 / rh);
   renderer.setRenderTarget(null); renderer.setClearColor(0x000000, 1); renderer.clear();
   runQuad(mats.comp, null);
+  renderer.getDrawingBufferSize(ribMat.uniforms.res.value); ribMat.uniforms.bg.value = bgTex;
+  spMat.uniforms.px.value = Math.max(2, 1.6 * renderer.getPixelRatio());
+  renderer.autoClear = false; renderer.render(fxScene, cam);
   if (showMesh) renderer.render(dbgScene, cam);
+  renderer.autoClear = true;
+}
+// ---------- falling jet: smooth analytic ribbon (tube impostor) through the emission history ----------
+const RIBN = 420; let ribGeo, ribMat, spGeo, spMat, fxScene;
+function initFX() {
+  ribGeo = new THREE.BufferGeometry();
+  const A = (n, k) => new THREE.BufferAttribute(new Float32Array(RIBN * 2 * n), n).setUsage(THREE.DynamicDrawUsage);
+  ribGeo.setAttribute('position', A(3)); ribGeo.setAttribute('nxt', A(3)); ribGeo.setAttribute('side', A(1)); ribGeo.setAttribute('rad', A(1)); ribGeo.setAttribute('al', A(1)); ribGeo.setAttribute('s', A(1));
+  const idx = []; for (let i = 0; i < RIBN - 1; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); } ribGeo.setIndex(idx);
+  ribGeo.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0.3, 0.8), 5);
+  ribMat = new THREE.ShaderMaterial({
+    uniforms: { bg: { value: null }, res: { value: new THREE.Vector2(1, 1) } },
+    vertexShader: `attribute vec3 nxt; attribute float side, rad, al, s; uniform vec2 res; varying float vU, vA, vS;
+      void main(){ vec4 c=projectionMatrix*modelViewMatrix*vec4(position,1.); vec4 n=projectionMatrix*modelViewMatrix*vec4(nxt,1.);
+        vec2 a=c.xy/c.w, b=n.xy/n.w; vec2 d=(b-a)*res; d=length(d)>1e-6?normalize(d):vec2(0.,1.); vec2 pp=vec2(-d.y,d.x);
+        float pr=max(rad*projectionMatrix[1][1]/c.w*res.y*0.5, 1.4); // half-width in px
+        c.xy += pp*(pr+1.)*side/res*2.*c.w; vU=side*(pr+1.)/pr; vA=al; vS=s; gl_Position=c; }`,
+    fragmentShader: `uniform sampler2D bg; uniform vec2 res; varying float vU, vA, vS;
+      void main(){ float u=vU; float au=abs(u); float aw=fwidth(u)*1.2; float edge=1.-smoothstep(1.-aw,1.+aw,au); if(edge<=0.) discard;
+        float uc=clamp(u,-1.,1.); float nz=sqrt(max(0.,1.-uc*uc));
+        vec2 uv=gl_FragCoord.xy/res; vec3 refr=texture2D(bg,clamp(uv+vec2(-uc*0.010*(1.-nz*0.6),0.002*nz),0.001,0.999)).rgb;
+        vec3 col=refr*vec3(1.0,0.97,0.82)*(0.84+0.22*nz);            // pale straw glass
+        col*=mix(0.62,1.,smoothstep(0.,0.55,nz));                    // edge darkening
+        col+=vec3(1.,0.98,0.9)*(exp(-pow((u+0.32)/0.12,2.))*0.5+exp(-pow((u-0.5)/0.08,2.))*0.18); // specular core lines
+        gl_FragColor=vec4(col,edge*vA*mix(0.7,0.95,nz)); }`,
+    transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide,
+  });
+  const rib = new THREE.Mesh(ribGeo, ribMat); rib.frustumCulled = false;
+  spGeo = new THREE.BufferGeometry(); spGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(MAXN * 3), 3).setUsage(THREE.DynamicDrawUsage));
+  spGeo.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0.3, 0.8), 5);
+  spMat = new THREE.ShaderMaterial({ uniforms: { px: { value: 2 } },
+    vertexShader: `uniform float px; void main(){ gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); gl_PointSize=px; }`,
+    fragmentShader: `void main(){ vec2 c=gl_PointCoord*2.-1.; float r=dot(c,c); if(r>1.) discard; gl_FragColor=vec4(vec3(1.,0.97,0.82)*(1.-r*0.5),0.75*(1.-r)); }`,
+    transparent: true, depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending });
+  const sp = new THREE.Points(spGeo, spMat); sp.frustumCulled = false;
+  fxScene = new THREE.Scene(); fxScene.add(sp); fxScene.add(rib);
+}
+const TJ = 0.2;
+function buildRibbon() {
+  const pa = ribGeo.attributes.position.array, na = ribGeo.attributes.nxt.array, sd = ribGeo.attributes.side.array, ra = ribGeo.attributes.rad.array, al = ribGeo.attributes.al.array, sa = ribGeo.attributes.s.array;
+  // samples from newest (at the body) to oldest (at impact), densified by interpolating emission state
+  const pts = []; const H = JH.length;
+  for (let h = H - 1; h > 0 && pts.length < RIBN; h--) {
+    const A = JH[h], B = JH[h - 1];
+    for (let k = 0; k < 3 && pts.length < RIBN; k++) {
+      const f = k / 3, te = A.t + (B.t - A.t) * f, a = simT - te;
+      if (a < 0) continue; if (a > TJ) { h = 0; break; }
+      const vx = A.vx + (B.vx - A.vx) * f, vy = A.vy + (B.vy - A.vy) * f, vz = A.vz + (B.vz - A.vz) * f;
+      const s = a / TJ, wob = Math.sin(a * 60 - simT * 23) * 0.0011 * s;
+      const x = A.ox + (B.ox - A.ox) * f + vx * a + wob, y = A.oy + (B.oy - A.oy) * f + vy * a, z = A.oz + (B.oz - A.oz) * f + vz * a + 0.5 * GRAV * a * a;
+      const fd = (x - CX) * FWD.x + (y - CY) * FWD.y + (z - CZ) * FWD.z;
+      let alpha = Math.min(1, Math.max(0, (fd - 0.13) / 0.05)) * (visible(x, y, z) ? 1 : 0) * (1 - Math.max(0, (s - 0.86) / 0.14));
+      let r = RAD * 0.85 * (0.72 + 0.28 * s);
+      if (s > 0.75) r *= 1 + 0.35 * Math.sin(a * 900 + simT * 40) * (s - 0.75) * 4; // slight breakup near impact
+      pts.push(x, y, z, r, alpha, s);
+    }
+  }
+  const N = pts.length / 6;
+  for (let i = 0; i < RIBN; i++) {
+    const j = Math.min(i, N - 1), jn = Math.min(j + 1, N - 1), jp = j === jn ? Math.max(0, j - 1) : j;
+    for (let q = 0; q < 2; q++) {
+      const v = i * 2 + q;
+      if (N < 2) { al[v] = 0; continue; }
+      pa[v * 3] = pts[j * 6]; pa[v * 3 + 1] = pts[j * 6 + 1]; pa[v * 3 + 2] = pts[j * 6 + 2];
+      // direction: towards next sample (or away from the previous at the tail)
+      const dn = j === jn ? -1 : 1, o = j === jn ? jp : jn;
+      na[v * 3] = pa[v * 3] + (pts[o * 6] - pts[j * 6]) * dn; na[v * 3 + 1] = pa[v * 3 + 1] + (pts[o * 6 + 1] - pts[j * 6 + 1]) * dn; na[v * 3 + 2] = pa[v * 3 + 2] + (pts[o * 6 + 2] - pts[j * 6 + 2]) * dn;
+      sd[v] = q ? 1 : -1; ra[v] = pts[j * 6 + 3]; al[v] = i < N ? pts[j * 6 + 4] : 0; sa[v] = pts[j * 6 + 5];
+    }
+  }
+  for (const k of ['position', 'nxt', 'side', 'rad', 'al', 's']) ribGeo.attributes[k].needsUpdate = true;
 }
 
 // ---------- input ----------
@@ -632,7 +721,7 @@ function frame(now) {
 (async function main() {
   const ext = webp ? '.webp' : '.png';
   await Promise.all([load('plate5c', webp ? '.webp' : '.jpg'), load('en-fly', ext), load('en-roach', ext)]);
-  layout(); initGL(); layout(); if (AUTO) $('tip').style.opacity = 0;
+  layout(); initGL(); initFX(); layout(); if (AUTO) $('tip').style.opacity = 0;
   for (let k = 0; k < 400 && BUGS.length < 4; k++) spawnBug();
   requestAnimationFrame(frame);
 })();
